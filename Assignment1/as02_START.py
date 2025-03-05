@@ -7,6 +7,7 @@ import functions as fn
 from sklearn.linear_model import LinearRegression
 #%% ## Import Data 
 df_WindData = pd.read_csv('WindData.csv', parse_dates=True, index_col=0)
+df_Original_WindData = df_WindData.copy()
 #%% QUESTION 1) PLOT everything before manipulating the dataframe
 plot_all_measurements_bool = False
 fn.plot_all_measurements(df_WindData,plot_all_measurements_bool)
@@ -30,15 +31,10 @@ df_WindData_cleaned, removed_rows_df = fn.convert_repeating_to_nan(df_WindData, 
 #plot_cleaned_from_zeros_bool = False
 #fn.plot_all_measurements(df_WindData_cleaned_from_zeros,plot_cleaned_from_zeros_bool)
 
-#Filter low wind speeds (3m/s)
-fn.plot_remove_low_ws_check(df_WindData_cleaned,'before')
-df_WindData_removed_low_ws = fn.replace_low_ws_with_nan(df_WindData_cleaned, ['Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min','Cup114m_Mean','Cup114m_Max', 'Cup114m_Min','Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'])
-#check results:
-fn.plot_remove_low_ws_check(df_WindData_removed_low_ws,'after')
 
 #%% Remove thermometer, cups and sonic outliers
 
-df_WindData_cleaned_from_outliers = fn.replace_outliers_with_nan(df_WindData_removed_low_ws,
+df_WindData_cleaned_from_outliers = fn.replace_outliers_with_nan(df_WindData_cleaned,
                                                                  ['Temp100m_Mean', 'Temp100m_Max', 'Temp100m_Min', 
                                                                   'Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min',
                                                                   'Cup114m_Mean','Cup114m_Max', 'Cup114m_Min',
@@ -53,24 +49,18 @@ fn.plot_scatter_and_lines('Temperature',
     df_WindData_cleaned_from_outliers['Temp100m_Min'],
     unit='°C', plot_bool=plot_cleaned_from_outliers_bool)
 #%% Question 2)
-df_WindData = df_WindData_cleaned_from_outliers
+df_WindData = df_WindData_cleaned_from_outliers.copy()
 # # Plot the ratio of the cup anemometer and sonic wind speeds at 100m as a function of
 #  wind direction. Does the pattern you see agree with your understanding of how the instruments 
 # are mounted and their respective boom directions? 
 
 
 df_WindData['Speed_Ratio'] = df_WindData['Cup100m_Mean'] / df_WindData['Sonic100m_Scalar_Mean']
-plot_speed_ratio_sonic = False
-fn.plot_scatter(df_WindData['Sonic100m_Dir'], df_WindData['Speed_Ratio'],'speed ratio',
-                 xlabel='Wind Direction (Sonic) (°)',ylabel='Speed Ratio (Cup/Sonic)',
-                 title='Ratio of Cup Anemometer and Sonic Wind Speeds at 100m', 
-                 plot_bool=plot_speed_ratio_sonic)
 
-plot_speed_ratio_vane = False
-fn.plot_scatter(df_WindData['Vane100m_Mean'], df_WindData['Speed_Ratio'],'speed ratio',
-                 xlabel='Wind Direction (Vane) (°)',ylabel='Speed Ratio (Cup/Sonic)',
-                 title='Ratio of Cup Anemometer and Sonic Wind Speeds at 100m',
-                 plot_bool=plot_speed_ratio_vane)
+plot_speed_ratio_sonic = False
+fn.plot_scatter('Ratio of Cup Anemometer and Sonic Wind Speeds at 100m',
+                df_WindData['Sonic100m_Dir'], df_WindData['Speed_Ratio'], label1 = 'speed ratio', label_y ='Speed Ratio (Cup/Sonic)', 
+                label_x = 'Wind Direction (Sonic) (°)',plot_bool = plot_speed_ratio_sonic)
 
 # # We see that the cup is mounted upstream with southwind, and the sonic is mounted downstream, and would expect higher wind speeds measuremtns  from the cup when the wind is southern (180 degrees), and similarly higher ws meas from the sonic when the wind is northern (0/360 degrees), and this is what we see. nice.
 
@@ -95,19 +85,10 @@ fn.plot_scatter(df_WindData['Vane100m_Mean'], df_WindData['Speed_Ratio'],'speed 
 #  instruments are positioned in undisturbed airflow.
 # # 
 
-
-
-
-#%% Question 4
-#First, we need to create scatter plots comparing the Windcube wind speeds (Spd column)
-#  with the cup anemometer at 100m (Cup100m_Mean column)
-#%% Question 4
-# First, create scatter plots comparing Windcube speeds with cup anemometer
-#turbine bounds
 highest_bound_wt = 346.47 
 lowest_bound_wt = 13.24
 #filter out the data that is not within the bounds
-fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt)
+#fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt)
 
 
 #df_WindData = fn.filter_direction(df_WindData)
@@ -119,73 +100,85 @@ print(f"Original rows: {len(df_WindData)}")
 print(f"Filtered rows: {len(df_filtered)}")
 print(f"Removed rows: {len(df_WindData) - len(df_filtered)}")
 
+#set working dataframe to the filtered one after confirming that the filtering was successful
+df_WindData = df_filtered.copy()
 
 
-fn.plot_directional_check(df_filtered,'after filtering',highest_bound_wt,lowest_bound_wt)
 
-#check south west house sector
-# highest_bound_sw = 146.6
-# lowest_bound_sw = 125
-# df_filtered = fn.filter_direction(df_filtered, lowest_bound_sw,highest_bound_sw)
+#%% Question 4
+#  Make an initial investigation of how the Windcube wind speeds compare to 
+# the relevant cup anemometer, using the direction filters you have derived so 
+# far (you can also try without the filters). Perform linear regressions and use 
+# the gain, offset and R2  as metrics. See how, in addition, using the lidar’s 
+# availability as a filter affects the result.  The availability parameter is described 
+# as follows: 
+ 
+# The Windcube has an internal Carrier to Noise Ratio (CNR) threshold of -23dB 
+# which means that if the CNR is below that level, there’s no valid measurement 
+# of the speed and direction from the lidar. The availability parameter (a 
+# channel you will find in the data) is related to the CNR values and the CNR 
+# threshold. Basically, it shows the percentage of the measurements in a 10min 
+# period that had a CNR value above the threshold and are therefore valid.  
+ 
+# Show 3 or 4 different regression plots using different values of the 
+# parameters
 
-# fn.plot_directional_check(df_filtered,'after filtering',highest_bound_sw,lowest_bound_sw)
+#First, we need to create scatter plots comparing the Windcube wind speeds (Spd column)
+#  with the cup anemometer at 100m (Cup100m_Mean column)
 
 
-#%%
+fn.plot_scatter('Wind Speed Comparison',df_filtered['Vane100m_Mean'], df_filtered['Cup100m_Mean'], 'Cup',
+                 df_filtered['Vane100m_Mean'], df_filtered['Spd'], 'Windcube', label_x = 'Wind Direction [°]', 
+                 label_y = 'Wind Speed [m/s]', plot_bool = False)
+
 # # Create new DataFrame for analysis
-# df_comparison = df_WindData.copy()
+df_comparison = df_WindData.copy()
 
-# # Function to perform regression analysis and create scatter plot
-# def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Comparison"):
-#     """
-#     Perform regression analysis between cup and lidar measurements
-    
-#     Parameters:
-#     df (DataFrame): Input data
-#     availability_threshold (float): Minimum availability threshold (0-100)
-#     title (str): Plot title
-#     """
-#     # Apply availability filter if specified
-#     if availability_threshold is not None:
-#         df = df[df['Available'] >= availability_threshold]
-    
-#     # Get data without NaN values
-#     valid_data = df.dropna(subset=['Cup100m_Mean', 'Spd'])
-    
-#     # Prepare data for regression
-#     X = valid_data['Cup100m_Mean'].values.reshape(-1, 1)
-#     y = valid_data['Spd'].values
-    
-#     # Perform linear regression
-#     reg = LinearRegression().fit(X, y)
-#     gain = reg.coef_[0]
-#     offset = reg.intercept_
-#     r2 = reg.score(X, y)
-    
-#     # Create scatter plot
-#     plt.figure(figsize=(10, 6))
-#     plt.scatter(X, y, alpha=0.5)
-#     plt.plot(X, reg.predict(X), color='red', linewidth=2)
-    
-#     plt.xlabel('Cup Anemometer Speed [m/s]')
-#     plt.ylabel('Lidar Speed [m/s]')
-#     plt.title(f'{title}\nGain: {gain:.3f}, Offset: {offset:.3f}, R²: {r2:.3f}')
-#     plt.grid(True)
-#     plt.show()
+# Function to perform regression analysis and create scatter plot
 
-# # Create different comparison plots
-# # 1. No filters
-# analyze_wind_speeds(df_comparison, title="No Filters")
+plot_lidar_vs_cup = False
+# Create different comparison plots
+# 0. no directional filter
+if plot_lidar_vs_cup == True:
+        
+    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers, title="Comparison (No Directional Filter)")
 
-# # 2. With 80% availability threshold
-# analyze_wind_speeds(df_comparison, availability_threshold=80, 
-#                    title="With 80% Availability Filter")
+    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers, availability_threshold= 50, title="Comparison (No Directional Filter), Availabilty = 50%")
+    # 1. No filters
+    fn.analyze_wind_speeds(df_comparison, title="Filtered comparison (No Availability Filter)")
 
-# # 3. With 95% availability threshold
-# analyze_wind_speeds(df_comparison, availability_threshold=95, 
-#                    title="With 95% Availability Filter")
+    # 3. With 95% availability threshold
+    fn.analyze_wind_speeds(df_comparison, availability_threshold=95, 
+                    title="Filtered comparison with 95% Availability Filter")
 
-# # 4. With direction filter from question 3 (you need to add this)
-# # Example: good_directions = (df_comparison['Vane100m_Mean'] >= 180) & (df_comparison['Vane100m_Mean'] <= 270)
-# # df_filtered = df_comparison[good_directions]
-# # analyze_wind_speeds(df_filtered, title="With Direction Filter")
+# %% Question 5
+# Filter the wind speed from the cup anemometer to exclude the 
+# possibility of ice on the cups. Explain how you have done this and report how 
+# many data points have been removed. 
+
+
+# Apply ice filtering
+df_ice_filtered, points_removed = fn.filter_ice_on_cups(df_WindData, ice_threshold=4)
+
+# Optionally plot results
+fn.plot_scatter('Cup Speeds Before and After Ice Filtering',
+    df_WindData['Temp100m_Mean'], df_WindData['Cup100m_Mean'], 
+    label1='Original',
+    df2x = df_ice_filtered['Temp100m_Mean'], df2y = df_ice_filtered['Cup100m_Mean'],
+    label2='Ice Filtered',
+    label_x = 'Temp [°C]', label_y = 'Wind Speed [m/s]',
+    plot_bool=True)
+
+     
+# A formal lidar calibration should only use wind speeds between 4 and 16 m/s. 
+# Explain why this is and perform this filtering on your dataset.
+
+
+#Filter low wind speeds (3m/s)
+fn.plot_check_ws_filter(df_ice_filtered,'before')
+df_filtered_ws = fn.filter_high_and_low_ws_out(df_ice_filtered, ['Spd', 'Spd_max', 'Spd_min'])
+#check results:
+fn.plot_check_ws_filter(df_filtered_ws,'after')
+
+df_Wind_Data = df_filtered_ws.copy()
+

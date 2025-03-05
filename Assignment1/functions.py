@@ -1,6 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.linear_model import LinearRegression
+
 def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,height = 100, unit ='Wind Speed (m/s)',plot_bool = False ):
     if plot_bool == True:
         plt.figure(figsize=(50,10))
@@ -19,10 +21,10 @@ def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,heigh
 
 
         plt.figure(figsize=(50, 10))
-        plt.scatter(df_mean.index, df_mean, label='mean', s=10)
+        plt.scatter(df_mean.index, df_mean, label='mean', s=1)
         if df_max is not None and df_min is not None:
-            plt.scatter(df_max.index, df_max, label='min', s=10)
-            plt.scatter(df_min.index, df_min, label='max', s=10)
+            plt.scatter(df_max.index, df_max, label='min', s=1)
+            plt.scatter(df_min.index, df_min, label='max', s=1)
         plt.xlabel('Time', fontsize=20)
         plt.ylabel(unit, fontsize=20)
         plt.xticks(fontsize=15)
@@ -30,6 +32,35 @@ def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,heigh
         plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
         plt.legend(fontsize=20)
         plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_scatter.png')
+        plt.show()
+
+def plot_scatter(title,df1x, df1y, label1, df2x = None, df2y = None, label2 = None, label_x = 'Time [s]', label_y ='Wind Speed (m/s)',plot_bool = False ):
+    """_summary_
+
+    Args:
+        title (String): _description_
+        df1x (df): _description_
+        df1y (df): _description_
+        label1 (String): _description_
+        df2x (df, optional): _description_. Defaults to None.
+        df2y (df, optional): _description_. Defaults to None.
+        label2 (String, optional): _description_. Defaults to None.
+        label_x (String, optional): _description_. Defaults to 'Time [s]'.
+        label_y (str, optional): _description_. Defaults to 'Wind Speed (m/s)'.
+        plot_bool (bool, optional): _description_. Defaults to False.
+    """
+    if plot_bool == True:
+        plt.figure(figsize=(50,10))
+        plt.scatter(df1x,df1y, label = label1,s=5)
+        if df2x is not None:
+            plt.scatter(df2x,df2y, label = label2,s=5)
+        plt.xlabel(label_x, fontsize=20)
+        plt.ylabel(label_y, fontsize=20)
+        plt.xticks(fontsize=15)
+        plt.yticks(fontsize=15)
+        plt.title(title, fontsize=25)
+        plt.legend(fontsize=20)
+        plt.savefig(f'Pictures/{title}_10min_Time_Series_scatter.png')
         plt.show()
 
 def plot_all_measurements(df,plot_bool = False):
@@ -54,20 +85,7 @@ def plot_all_measurements(df,plot_bool = False):
         # #### Vane
         plot_scatter_and_lines('Vane Wind Direction',df['Vane100m_Mean'],df['Vane100m_Max'],df['Vane100m_Min'], unit = 'Wind Direction [°]',plot_bool=True)
 
-def plot_scatter(df1_x, df1_y, label1, xlabel, ylabel, title, df2_x=None, df2_y=None, label2=None, plot_bool=True):
-    """
-    Create a scatter plot with one or two datasets
-    """
-    if plot_bool:
-        plt.figure(figsize=(50,10))
-        plt.scatter(df1_x, df1_y, label=label1, s=10, alpha=0.5)    
-        if df2_x is not None:
-            plt.scatter(df2_x, df2_y, label=label2, s=10, alpha=0.5)
-        plt.xlabel(xlabel, fontsize=14)
-        plt.ylabel(ylabel, fontsize=14)
-        plt.title(title, fontsize=16)
-        plt.legend(fontsize=12)
-        plt.show()
+
 
 def convert_repeating_to_nan(df, columns, threshold_hours=5):
     """
@@ -122,49 +140,63 @@ def replace_zeros_with_nan(df, columns=None):
     
     return df_cleaned
 
-def replace_low_ws_with_nan(df, columns=None):
+def filter_high_and_low_ws_out(df, columns=None, lower_bound=3.0, upper_bound=16.0):
     """
-    Replace all wind speeds below 3 m/s with NaN in specified columns of a DataFrame.
+    Replace wind speeds outside the valid range [lower_bound, upper_bound] with NaN.
+    For formal lidar calibration, valid range is typically 3-16 m/s.
     
     Parameters:
     df (pd.DataFrame): The input DataFrame
     columns (list, optional): List of column names to check. Must be wind speed columns.
                             If None, checks Cup*_Mean and Sonic*_Mean columns.
+    lower_bound (float): Minimum valid wind speed in m/s (default: 3.0)
+    upper_bound (float): Maximum valid wind speed in m/s (default: 16.0)
     
     Returns:
-    pd.DataFrame: DataFrame with low wind speeds replaced by NaN
+    pd.DataFrame: DataFrame with invalid wind speeds replaced by NaN
     """
     df_cleaned = df.copy()
     
     # If no columns specified, use default wind speed columns
     if columns is None:
-        # Find all Cup and Sonic mean wind speed columns
+        # Find all lidar columns
         columns = [col for col in df.columns if 
-                  ('Cup' in col and 'Mean' in col) or 
-                  ('Sonic' in col and 'Scalar_Mean' in col)]
+                  ('Spd' in col and 'Mean' in col)]
     
-    # Replace low wind speeds with NaN in specified columns
+    # Replace invalid wind speeds with NaN in specified columns
     for column in columns:
         try:
-            mask = df_cleaned[column] < 3.0
-            if mask.any():
-                df_cleaned.loc[mask, column] = np.nan
-                print(f"Replaced {mask.sum()} low wind speeds (<3 m/s) with NaN in column: {column}")
+            # Create mask for invalid wind speeds (too low or too high)
+            mask_low = df_cleaned[column] < lower_bound
+            mask_high = df_cleaned[column] > upper_bound
+            mask_combined = mask_low | mask_high
+            
+            if mask_combined.any():
+                low_count = mask_low.sum()
+                high_count = mask_high.sum()
+                df_cleaned.loc[mask_combined, column] = np.nan
+                print(f"Column {column}:")
+                print(f"  - Replaced {low_count} low wind speeds (<{lower_bound} m/s)")
+                print(f"  - Replaced {high_count} high wind speeds (>{upper_bound} m/s)")
+                print(f"  - Total replaced: {mask_combined.sum()}")
         except Exception as e:
             print(f"Error processing column {column}: {str(e)}")
     
     return df_cleaned
 
-def plot_remove_low_ws_check(df,title):
+def plot_check_ws_filter(df,title):
     x_vals = [df.index.min(),df.index.max()]
-    y_vals = [3,3]
+    lower_y_vals = [3,3]
+    upper_y_vals = [16,16]
+
 
 
     plt.figure(figsize=(50,10))
-    plt.scatter(df.index,df['Cup100m_Mean'], label = '100m', linewidth=1)
-    plt.scatter(df.index,df['Cup114m_Mean'], label = '114m', linewidth=1)
-    plt.scatter(df.index,df['Cup116m_Mean'], label = '116m', linewidth=1)
-    plt.plot(x_vals, y_vals, label = 'ws filter', linewidth=1)
+    plt.scatter(df.index,df['Spd'], label = 'Mean', s = 5)
+    plt.scatter(df.index,df['Spd_min'], label = 'Min', s = 5)
+    plt.scatter(df.index,df['Spd_max'], label = 'Max', s = 5)
+    plt.plot(x_vals, lower_y_vals, label = 'ws filter lower bound', linewidth = 2)
+    plt.plot(x_vals, upper_y_vals, label = 'ws filter upper bound', linewidth = 2)
     plt.xlabel('Time [s]', fontsize=20)
     plt.ylabel('Wind Speed (m/s)', fontsize=20)
     plt.xticks(fontsize=15)
@@ -172,7 +204,7 @@ def plot_remove_low_ws_check(df,title):
     #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
     plt.title(f'Speed filter check means {title} removal', fontsize=25)
     plt.legend(fontsize=20)
-    plt.savefig(f'Pictures/3_ms_filter.png')
+    plt.savefig(f'Pictures/lidar_ws_filter.png')
     plt.show()
 
 
@@ -243,6 +275,23 @@ def filter_direction(df, highest_bound, lowest_bound):
     print(f"Direction range in filtered data: {remaining_directions.min():.2f}° - {remaining_directions.max():.2f}°")
     
     return filtered_df
+def exclude_house_sector(df):
+    """
+    Filter out data between 125° and 146.6° (house sector).
+    
+    Parameters:
+    df (pd.DataFrame): The input DataFrame
+    
+    Returns:
+    pd.DataFrame: DataFrame with house sector excluded
+    """
+    mask = ~((df['Vane100m_Mean'] >= 125) & (df['Vane100m_Mean'] <= 146.6))
+    filtered_df = df[mask]
+    
+    remaining_directions = filtered_df['Vane100m_Mean'].dropna()
+    print(f"Direction range after excluding house sector: {remaining_directions.min():.2f}° - {remaining_directions.max():.2f}°")
+    
+    return filtered_df
 
 def plot_directional_check(df,title,highest_bound,lowest_bound):
     direction_filter_lower_bound_list = [lowest_bound,lowest_bound]
@@ -251,9 +300,9 @@ def plot_directional_check(df,title,highest_bound,lowest_bound):
 
 
     plt.figure(figsize=(50,10))
-    plt.scatter(df['Vane100m_Mean'],df['Cup100m_Mean'], label = 'mean', linewidth=1)
-    plt.plot(direction_filter_lower_bound_list, y_values_list, label = 'direction filter', linewidth=1)
-    plt.plot(direction_filter_upper_bound_list, y_values_list, label = 'direction filter', linewidth=1)
+    plt.scatter(df['Vane100m_Mean'],df['Cup100m_Mean'], label = 'mean', s = 5)
+    plt.scatter(direction_filter_lower_bound_list, y_values_list, label = 'direction filter', s = 5)
+    plt.scatter(direction_filter_upper_bound_list, y_values_list, label = 'direction filter', s = 5)
     plt.xlabel('Wind Direction [°]', fontsize=20)
     plt.ylabel('Wind Speed (m/s)', fontsize=20)
     plt.xticks(fontsize=15)
@@ -262,3 +311,83 @@ def plot_directional_check(df,title,highest_bound,lowest_bound):
     plt.title(f'Directional filter check {title}', fontsize=25)
     plt.legend(fontsize=20)
     plt.show()
+
+def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Comparison"):
+    """
+    Perform regression analysis between cup and lidar measurements
+    
+    Parameters:
+    df (DataFrame): Input data
+    availability_threshold (float): Minimum availability threshold (0-100)
+    title (str): Plot title
+    """
+    # Apply availability filter if specified
+    if availability_threshold is not None:
+        df = df[df['Available'] >= availability_threshold]
+    
+    # Get data without NaN values
+    valid_data = df.dropna(subset=['Cup100m_Mean', 'Spd'])
+    
+    # Prepare data for regression
+    X = valid_data['Cup100m_Mean'].values.reshape(-1, 1)
+    y = valid_data['Spd'].values
+    
+    # Perform linear regression
+    reg = LinearRegression().fit(X, y)
+    gain = reg.coef_[0]
+    offset = reg.intercept_
+    r2 = reg.score(X, y)
+    
+    # Create scatter plot
+    plt.figure(figsize=(10, 6))
+    plt.scatter(X, y, alpha=0.5)
+    plt.plot(X, reg.predict(X), color='red', linewidth=2)
+    
+    plt.xlabel('Cup Anemometer Speed [m/s]')
+    plt.ylabel('Lidar Speed [m/s]')
+    plt.title(f'{title}\nGain: {gain:.3f}, Offset: {offset:.3f}, R²: {r2:.3f}')
+    plt.grid(True)
+    plt.savefig(f'Pictures/lidar_cup_regression_{availability_threshold}.png')
+    plt.show()
+
+
+def filter_ice_on_cups(df, ice_threshold=4):
+    """
+    Filter the wind speed from the cup anemometer to exclude the possibility of ice on the cups.
+    Ice typically forms when temperature is at or below 4°C (default threshold).
+    
+    Parameters:
+    df (pd.DataFrame): Input DataFrame with wind and temperature measurements
+    ice_threshold (float): Temperature threshold for ice formation in °C
+    
+    Returns:
+    pd.DataFrame: DataFrame with ice-filtered data
+    tuple: (filtered DataFrame, number of points removed)
+    """
+    # Create a copy to avoid modifying the original
+    df_filtered = df.copy()
+    
+    cup_columns = ['Cup100m_Mean', 'Cup100m_Min', 'Cup100m_Max', 'Cup100m_Stdv',
+                   'Cup114m_Mean', 'Cup114m_Min', 'Cup114m_Max', 'Cup114m_Stdv',
+                   'Cup116m_Mean', 'Cup116m_Min', 'Cup116m_Max', 'Cup116m_Stdv']
+    
+    # Create mask for potential icing conditions
+    ice_mask = df_filtered['Temp100m_Mean'] <= ice_threshold
+    
+    # Count original non-NaN values
+    original_count = df_filtered[cup_columns].count().sum()
+    
+    # Set cup measurements to NaN where temperature indicates possible icing
+    for col in cup_columns:
+        df_filtered.loc[ice_mask, col] = np.nan
+    
+    # Count remaining non-NaN values
+    remaining_count = df_filtered[cup_columns].count().sum()
+    points_removed = original_count - remaining_count
+    
+    print(f"Ice filtering results:")
+    print(f"Temperature threshold: {ice_threshold}°C")
+    print(f"Total points removed: {points_removed}")
+    print(f"Percentage of data removed: {(points_removed/original_count)*100:.2f}%")
+    
+    return df_filtered, points_removed
