@@ -8,7 +8,7 @@ from sklearn.linear_model import LinearRegression
 #%% ## Import Data 
 df_WindData = pd.read_csv('WindData.csv', parse_dates=True, index_col=0)
 #%% Question 1) PLOT everything before manipulating the dataframe
-plot_all_measurements_bool = True
+plot_all_measurements_bool = False
 fn.plot_all_measurements(df_WindData,plot_all_measurements_bool)
 # #### Erroneous Data
 # By looking at the cups, vane and thermometer plots, it seems the is missing data the around the 2015-11-15. 
@@ -31,6 +31,12 @@ df_WindData_cleaned_from_zeros = fn.replace_zeros_with_nan(df_WindData_cleaned)
 #check results:
 plot_cleaned_from_zeros_bool = False
 fn.plot_all_measurements(df_WindData_cleaned_from_zeros,plot_cleaned_from_zeros_bool)
+
+
+fn.plot_remove_low_ws_check(df_WindData_cleaned_from_zeros,'before')
+df_WindData_removed_low_ws = fn.replace_low_ws_with_nan(df_WindData_cleaned_from_zeros, ['Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min','Cup114m_Mean','Cup114m_Max', 'Cup114m_Min','Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'])
+#check results:
+fn.plot_remove_low_ws_check(df_WindData_removed_low_ws,'after')
 
 #%% Remove thermometer outliers
 
@@ -95,21 +101,34 @@ fn.plot_scatter(df_WindData['Vane100m_Mean'], df_WindData['Speed_Ratio'],'speed 
 #  with the cup anemometer at 100m (Cup100m_Mean column)
 #%% Question 4
 # First, create scatter plots comparing Windcube speeds with cup anemometer
-fn.plot_scatter_and_lines('Cup',df_WindData['Vane100m_Mean'],df_WindData['Cup100m_Mean'],plot_bool=True)
+#turbine bounds
+highest_bound_wt = 346.47 
+lowest_bound_wt = 13.24
+#filter out the data that is not within the bounds
+fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt)
+
+
+#df_WindData = fn.filter_direction(df_WindData)
+# Apply direction filter to get clean sector data
+df_filtered = fn.filter_direction(df_WindData, highest_bound_wt, lowest_bound_wt)
+
+# Check how many rows were filtered out
+print(f"Original rows: {len(df_WindData)}")
+print(f"Filtered rows: {len(df_filtered)}")
+print(f"Removed rows: {len(df_WindData) - len(df_filtered)}")
 
 
 
-df_WindData = fn.filter_direction(df_WindData)
+fn.plot_directional_check(df_filtered,'after filtering',highest_bound_wt,lowest_bound_wt)
 
-fn.plot_scatter(
-    df1_x=df_WindData.index, df1_y=df_WindData['Cup100m_Mean'],
-    label1='Cup', xlabel='Time', ylabel='Speed (m/s)',
-    title='Cup vs Lidar comparison at 100m',
-    df2_x=df_WindData.index, df2_y=df_WindData['Spd'],
-    label2='Lidar', plot_bool=False
-)
+#check south west house sector
+# highest_bound_sw = 146.6
+# lowest_bound_sw = 125
+# df_filtered = fn.filter_direction(df_filtered, lowest_bound_sw,highest_bound_sw)
 
-fn.plot_scatter_and_lines('Cup',df_WindData['Vane100m_Mean'],df_WindData['Cup100m_Mean'],plot_bool=True)
+# fn.plot_directional_check(df_filtered,'after filtering',highest_bound_sw,lowest_bound_sw)
+
+
 #%%
 # # Create new DataFrame for analysis
 # df_comparison = df_WindData.copy()
