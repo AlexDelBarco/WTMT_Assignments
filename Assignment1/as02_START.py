@@ -36,10 +36,14 @@ df_WindData_removed_low_ws = fn.replace_low_ws_with_nan(df_WindData_cleaned, ['C
 #check results:
 fn.plot_remove_low_ws_check(df_WindData_removed_low_ws,'after')
 
-#%% Remove thermometer outliers
+#%% Remove thermometer, cups and sonic outliers
 
-df_WindData_cleaned_from_outliers = fn.replace_outliers_with_nan(df_WindData_cleaned_from_zeros,
-                                                                 ['Temp100m_Mean', 'Temp100m_Max', 'Temp100m_Min'],
+df_WindData_cleaned_from_outliers = fn.replace_outliers_with_nan(df_WindData_removed_low_ws,
+                                                                 ['Temp100m_Mean', 'Temp100m_Max', 'Temp100m_Min', 
+                                                                  'Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min',
+                                                                  'Cup114m_Mean','Cup114m_Max', 'Cup114m_Min',
+                                                                  'Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min', 
+                                                                  'Sonic100m_Scalar_Mean', 'Sonic100m_Scalar_Min', 'Sonic100m_Scalar_Max'],
                                                                  factor =18)
 # check results:
 plot_cleaned_from_outliers_bool = False
