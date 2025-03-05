@@ -14,6 +14,7 @@ def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,heigh
         plt.yticks(fontsize=15)
         plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
         plt.legend(fontsize=20)
+        plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_line.png')
         plt.show()
 
 
@@ -28,6 +29,7 @@ def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,heigh
         plt.yticks(fontsize=15)
         plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
         plt.legend(fontsize=20)
+        plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_scatter.png')
         plt.show()
 
 def plot_all_measurements(df,plot_bool = False):
