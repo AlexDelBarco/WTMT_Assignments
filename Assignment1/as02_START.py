@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import functions as fn
 from sklearn.linear_model import LinearRegression
-# ## Import Data 
+#%% ## Import Data 
 df_WindData = pd.read_csv('WindData.csv', parse_dates=True, index_col=0)
 #%% Question 1) PLOT everything before manipulating the dataframe
-plot_all_measurements_bool = False
+plot_all_measurements_bool = True
 fn.plot_all_measurements(df_WindData,plot_all_measurements_bool)
 # #### Erroneous Data
 # By looking at the cups, vane and thermometer plots, it seems the is missing data the around the 2015-11-15. 
@@ -36,7 +36,7 @@ fn.plot_all_measurements(df_WindData_cleaned_from_zeros,plot_cleaned_from_zeros_
 
 df_WindData_cleaned_from_outliers = fn.replace_outliers_with_nan(df_WindData_cleaned_from_zeros,
                                                                  ['Temp100m_Mean', 'Temp100m_Max', 'Temp100m_Min'],
-                                                                 factor = 18)
+                                                                 factor =18)
 # check results:
 plot_cleaned_from_outliers_bool = False
 fn.plot_scatter_and_lines('Temperature',
@@ -87,19 +87,29 @@ fn.plot_scatter(df_WindData['Vane100m_Mean'], df_WindData['Speed_Ratio'],'speed 
 #  instruments are positioned in undisturbed airflow.
 # # 
 
+
+
+
 #%% Question 4
 #First, we need to create scatter plots comparing the Windcube wind speeds (Spd column)
 #  with the cup anemometer at 100m (Cup100m_Mean column)
 #%% Question 4
 # First, create scatter plots comparing Windcube speeds with cup anemometer
+fn.plot_scatter_and_lines('Cup',df_WindData['Vane100m_Mean'],df_WindData['Cup100m_Mean'],plot_bool=True)
+
+
+
+df_WindData = fn.filter_direction(df_WindData)
+
 fn.plot_scatter(
     df1_x=df_WindData.index, df1_y=df_WindData['Cup100m_Mean'],
     label1='Cup', xlabel='Time', ylabel='Speed (m/s)',
     title='Cup vs Lidar comparison at 100m',
     df2_x=df_WindData.index, df2_y=df_WindData['Spd'],
-    label2='Lidar', plot_bool=True
+    label2='Lidar', plot_bool=False
 )
 
+fn.plot_scatter_and_lines('Cup',df_WindData['Vane100m_Mean'],df_WindData['Cup100m_Mean'],plot_bool=True)
 #%%
 # # Create new DataFrame for analysis
 # df_comparison = df_WindData.copy()

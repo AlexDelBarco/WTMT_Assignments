@@ -34,23 +34,23 @@ def plot_all_measurements(df,plot_bool = False):
     if plot_bool == True:
 
         # #### Cup 116m
-        plot_scatter_and_lines('Cup',df['Cup116m_Mean'],df['Cup116m_Max'],df['Cup116m_Min'],116)
+        plot_scatter_and_lines('Cup',df['Cup116m_Mean'],df['Cup116m_Max'],df['Cup116m_Min'],116,plot_bool=True)
 
         # #### Cup 114m
-        plot_scatter_and_lines('Cup',df['Cup114m_Mean'],df['Cup114m_Max'],df['Cup114m_Min'],114)
+        plot_scatter_and_lines('Cup',df['Cup114m_Mean'],df['Cup114m_Max'],df['Cup114m_Min'],114,plot_bool=True)
 
         # #### Cup 100m
-        plot_scatter_and_lines('Cup',df['Cup100m_Mean'],df['Cup100m_Max'],df['Cup100m_Min'])
+        plot_scatter_and_lines('Cup',df['Cup100m_Mean'],df['Cup100m_Max'],df['Cup100m_Min'],plot_bool=True)
 
         # #### Sonic
-        plot_scatter_and_lines('Sonic Wind Speed Scalar',df['Sonic100m_Scalar_Mean'],df['Sonic100m_Scalar_Min'],df['Sonic100m_Scalar_Max'])
-        plot_scatter_and_lines('Sonic Wind Direction',df['Sonic100m_Dir'], unit = 'Wind Direction [°]')
+        plot_scatter_and_lines('Sonic Wind Speed Scalar',df['Sonic100m_Scalar_Mean'],df['Sonic100m_Scalar_Min'],df['Sonic100m_Scalar_Max'],plot_bool=True)
+        plot_scatter_and_lines('Sonic Wind Direction',df['Sonic100m_Dir'], unit = 'Wind Direction [°]',plot_bool=True)
 
         # #### Termometer
-        plot_scatter_and_lines('Thermometer',df['Temp100m_Mean'],df['Temp100m_Max'],df['Temp100m_Min'],unit = '°C')
+        plot_scatter_and_lines('Thermometer',df['Temp100m_Mean'],df['Temp100m_Max'],df['Temp100m_Min'],unit = '°C',plot_bool=True)
 
         # #### Vane
-        plot_scatter_and_lines('Vane Wind Direction',df['Vane100m_Mean'],df['Vane100m_Max'],df['Vane100m_Min'], unit = 'Wind Direction [°]')
+        plot_scatter_and_lines('Vane Wind Direction',df['Vane100m_Mean'],df['Vane100m_Max'],df['Vane100m_Min'], unit = 'Wind Direction [°]',plot_bool=True)
 
 def plot_scatter(df1_x, df1_y, label1, xlabel, ylabel, title, df2_x=None, df2_y=None, label2=None, plot_bool=True):
     """
@@ -121,6 +121,7 @@ def replace_zeros_with_nan(df, columns=None):
     return df_cleaned
 
 def replace_outliers_with_nan(df, columns=None, factor=3):
+
     """
     Replace outlier values with NaN in specified columns of a DataFrame.
     Outliers are defined as values whose rate of change exceeds the average
@@ -160,3 +161,20 @@ def replace_outliers_with_nan(df, columns=None, factor=3):
             print(f"Average gradient: {avg_gradient:.2f}, Max allowed gradient: {max_allowed_gradient:.2f}")
     
     return df_cleaned
+
+def filter_direction(df):
+    """
+    Filter the dataframe to only include rows where the wind direction is within the free sector
+    (excluding turbine wake region between 346.47° and 13.24°).
+    
+    Parameters:
+    df (pd.DataFrame): The input DataFrame.
+    
+    Returns:
+    pd.DataFrame: The filtered DataFrame with all columns but only rows in the free sector.
+    """
+    # Create mask for free sector (all directions EXCEPT 346.47° to 13.24°)
+    mask = (df['Vane100m_Mean'] <= 346.47) | (df['Vane100m_Mean'] >= 13.24)
+    
+    # Return DataFrame with all columns but only rows that satisfy the mask
+    return df[mask]
