@@ -172,6 +172,7 @@ def plot_remove_low_ws_check(df,title):
     #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
     plt.title(f'Speed filter check means {title} removal', fontsize=25)
     plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/3_ms_filter.png')
     plt.show()
 
 

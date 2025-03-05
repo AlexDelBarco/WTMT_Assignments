@@ -7,14 +7,11 @@ import functions as fn
 from sklearn.linear_model import LinearRegression
 #%% ## Import Data 
 df_WindData = pd.read_csv('WindData.csv', parse_dates=True, index_col=0)
-#%% Question 1) PLOT everything before manipulating the dataframe
+#%% QUESTION 1) PLOT everything before manipulating the dataframe
 plot_all_measurements_bool = False
 fn.plot_all_measurements(df_WindData,plot_all_measurements_bool)
-# #### Erroneous Data
-# By looking at the cups, vane and thermometer plots, it seems the is missing data the around the 2015-11-15. 
-
-
-# For the Cup, Vane and Termometer measurements, it will be looked at the data for those periods that the values recorded keeps
+## Erroneous Data
+# For the Cup, Sonic, Vane and Termometer measurements, it will be looked at the data for those periods that the values recorded keeps
 #  repeating for more than 5 hours; those periods will be considered as erroneous data and then be converted to NaN
 #%%  #Replace repeating values with NaN after a certain threshold (5 hours) of repetitions.
 #list of measurements
@@ -24,17 +21,18 @@ df_WindData_cleaned, removed_rows_df = fn.convert_repeating_to_nan(df_WindData, 
 
 #check results:
 #plot_all_measurements(df_WindData_cleaned)
-#%% Filter the thermometer outlies, to remove sudden changes, and zero values
 
+#%% Filter Outliers
 
-df_WindData_cleaned_from_zeros = fn.replace_zeros_with_nan(df_WindData_cleaned)
+#Filter Temp 0 values
+#df_WindData_cleaned_from_zeros = fn.replace_zeros_with_nan(df_WindData_cleaned)
 #check results:
-plot_cleaned_from_zeros_bool = False
-fn.plot_all_measurements(df_WindData_cleaned_from_zeros,plot_cleaned_from_zeros_bool)
+#plot_cleaned_from_zeros_bool = False
+#fn.plot_all_measurements(df_WindData_cleaned_from_zeros,plot_cleaned_from_zeros_bool)
 
-
-fn.plot_remove_low_ws_check(df_WindData_cleaned_from_zeros,'before')
-df_WindData_removed_low_ws = fn.replace_low_ws_with_nan(df_WindData_cleaned_from_zeros, ['Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min','Cup114m_Mean','Cup114m_Max', 'Cup114m_Min','Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'])
+#Filter low wind speeds (3m/s)
+fn.plot_remove_low_ws_check(df_WindData_cleaned,'before')
+df_WindData_removed_low_ws = fn.replace_low_ws_with_nan(df_WindData_cleaned, ['Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min','Cup114m_Mean','Cup114m_Max', 'Cup114m_Min','Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'])
 #check results:
 fn.plot_remove_low_ws_check(df_WindData_removed_low_ws,'after')
 
