@@ -122,6 +122,59 @@ def replace_zeros_with_nan(df, columns=None):
     
     return df_cleaned
 
+def replace_low_ws_with_nan(df, columns=None):
+    """
+    Replace all wind speeds below 3 m/s with NaN in specified columns of a DataFrame.
+    
+    Parameters:
+    df (pd.DataFrame): The input DataFrame
+    columns (list, optional): List of column names to check. Must be wind speed columns.
+                            If None, checks Cup*_Mean and Sonic*_Mean columns.
+    
+    Returns:
+    pd.DataFrame: DataFrame with low wind speeds replaced by NaN
+    """
+    df_cleaned = df.copy()
+    
+    # If no columns specified, use default wind speed columns
+    if columns is None:
+        # Find all Cup and Sonic mean wind speed columns
+        columns = [col for col in df.columns if 
+                  ('Cup' in col and 'Mean' in col) or 
+                  ('Sonic' in col and 'Scalar_Mean' in col)]
+    
+    # Replace low wind speeds with NaN in specified columns
+    for column in columns:
+        try:
+            mask = df_cleaned[column] < 3.0
+            if mask.any():
+                df_cleaned.loc[mask, column] = np.nan
+                print(f"Replaced {mask.sum()} low wind speeds (<3 m/s) with NaN in column: {column}")
+        except Exception as e:
+            print(f"Error processing column {column}: {str(e)}")
+    
+    return df_cleaned
+
+def plot_remove_low_ws_check(df,title):
+    x_vals = [df.index.min(),df.index.max()]
+    y_vals = [3,3]
+
+
+    plt.figure(figsize=(50,10))
+    plt.scatter(df.index,df['Cup100m_Mean'], label = '100m', linewidth=1)
+    plt.scatter(df.index,df['Cup114m_Mean'], label = '114m', linewidth=1)
+    plt.scatter(df.index,df['Cup116m_Mean'], label = '116m', linewidth=1)
+    plt.plot(x_vals, y_vals, label = 'ws filter', linewidth=1)
+    plt.xlabel('Time [s]', fontsize=20)
+    plt.ylabel('Wind Speed (m/s)', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.title(f'Speed filter check means {title} removal', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.show()
+
+
 def replace_outliers_with_nan(df, columns=None, factor=3):
 
     """
@@ -164,19 +217,47 @@ def replace_outliers_with_nan(df, columns=None, factor=3):
     
     return df_cleaned
 
-def filter_direction(df):
+
+def filter_direction(df, highest_bound, lowest_bound):
     """
-    Filter the dataframe to only include rows where the wind direction is within the free sector
-    (excluding turbine wake region between 346.47° and 13.24°).
+    Filter the dataframe to only include rows where the wind direction is OUTSIDE 
+    the turbine wake sector (346.47° - 13.24°).
+    #house south west : 146.6 - 125
+
     
     Parameters:
     df (pd.DataFrame): The input DataFrame.
     
     Returns:
-    pd.DataFrame: The filtered DataFrame with all columns but only rows in the free sector.
+    pd.DataFrame: The filtered DataFrame.
     """
-    # Create mask for free sector (all directions EXCEPT 346.47° to 13.24°)
-    mask = (df['Vane100m_Mean'] <= 346.47) | (df['Vane100m_Mean'] >= 13.24)
+    # Handle the wrap-around at 360 degrees properly
+    # Keep data where direction is NOT in the turbine wake sector
+    mask = ~((df['Vane100m_Mean'] >= highest_bound) | (df['Vane100m_Mean'] <= lowest_bound))
     
-    # Return DataFrame with all columns but only rows that satisfy the mask
-    return df[mask]
+    filtered_df = df[mask]
+    
+    # Print info about filtered directions
+    remaining_directions = filtered_df['Vane100m_Mean'].dropna()
+    print(f"Direction range in filtered data: {remaining_directions.min():.2f}° - {remaining_directions.max():.2f}°")
+    
+    return filtered_df
+
+def plot_directional_check(df,title,highest_bound,lowest_bound):
+    direction_filter_lower_bound_list = [lowest_bound,lowest_bound]
+    direction_filter_upper_bound_list = [highest_bound,highest_bound]
+    y_values_list = [0,30]
+
+
+    plt.figure(figsize=(50,10))
+    plt.scatter(df['Vane100m_Mean'],df['Cup100m_Mean'], label = 'mean', linewidth=1)
+    plt.plot(direction_filter_lower_bound_list, y_values_list, label = 'direction filter', linewidth=1)
+    plt.plot(direction_filter_upper_bound_list, y_values_list, label = 'direction filter', linewidth=1)
+    plt.xlabel('Wind Direction [°]', fontsize=20)
+    plt.ylabel('Wind Speed (m/s)', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.title(f'Directional filter check {title}', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.show()
