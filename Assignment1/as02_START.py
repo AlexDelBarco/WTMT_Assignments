@@ -16,7 +16,15 @@ fn.plot_all_measurements(df_WindData,plot_all_measurements_bool)
 #  repeating for more than 5 hours; those periods will be considered as erroneous data and then be converted to NaN
 #%%  #Replace repeating values with NaN after a certain threshold (5 hours) of repetitions.
 #list of measurements
-measured_values_column_names = ['Cup116m_Mean', 'Cup116m_Min', 'Cup116m_Max', 'Cup116m_Stdv','Cup114m_Mean', 'Cup114m_Min', 'Cup114m_Max', 'Cup114m_Stdv','Cup100m_Mean', 'Cup100m_Min', 'Cup100m_Max', 'Cup100m_Stdv','Vane100m_Mean', 'Vane100m_Min', 'Vane100m_Max', 'Vane100m_Stdv','Temp100m_Mean', 'Temp100m_Min', 'Temp100m_Max', 'Temp100m_Stdv','Sonic100m_Scalar_Mean', 'Sonic100m_Scalar_Min', 'Sonic100m_Scalar_Max', 'Sonic100m_Dir', 'Sonic100m_Scalar_Stdv']
+measured_values_column_names = ['Cup116m_Mean', 'Cup116m_Min', 'Cup116m_Max',
+                                 'Cup116m_Stdv','Cup114m_Mean', 'Cup114m_Min', 
+                                 'Cup114m_Max', 'Cup114m_Stdv','Cup100m_Mean',
+                                   'Cup100m_Min', 'Cup100m_Max', 'Cup100m_Stdv',
+                                   'Vane100m_Mean', 'Vane100m_Min', 'Vane100m_Max', 
+                                   'Vane100m_Stdv','Temp100m_Mean', 'Temp100m_Min', 
+                                   'Temp100m_Max', 'Temp100m_Stdv','Sonic100m_Scalar_Mean',
+                                     'Sonic100m_Scalar_Min', 'Sonic100m_Scalar_Max',
+                                       'Sonic100m_Dir', 'Sonic100m_Scalar_Stdv']
 
 df_WindData_cleaned, removed_rows_df = fn.convert_repeating_to_nan(df_WindData, measured_values_column_names)
 
@@ -34,22 +42,45 @@ df_WindData_cleaned, removed_rows_df = fn.convert_repeating_to_nan(df_WindData, 
 
 #%% Remove thermometer, cups and sonic outliers
 
-df_WindData_cleaned_from_outliers = fn.replace_outliers_with_nan(df_WindData_cleaned,
-                                                                 ['Temp100m_Mean', 'Temp100m_Max', 'Temp100m_Min', 
-                                                                  'Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min',
-                                                                  'Cup114m_Mean','Cup114m_Max', 'Cup114m_Min',
-                                                                  'Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min', 
-                                                                  'Sonic100m_Scalar_Mean', 'Sonic100m_Scalar_Min', 'Sonic100m_Scalar_Max'],
+df_WindData_cleaned_from_outliers_temp = fn.replace_outliers_with_nan(df_WindData_cleaned,
+                                                                 ['Temp100m_Mean', 'Temp100m_Max', 'Temp100m_Min'],
                                                                  factor =18)
+
+df_WindData_cleaned_from_outliers_cup = fn.replace_outliers_with_nan(df_WindData_cleaned_from_outliers_temp,
+                                                                 ['Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min',
+                                                                  'Cup114m_Mean','Cup114m_Max', 'Cup114m_Min',
+                                                                  'Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'],
+                                                                 factor =18)
+df_WindData_cleaned_from_outliers_sonic = fn.replace_outliers_with_nan(df_WindData_cleaned_from_outliers_cup,['Sonic100m_Scalar_Mean', 
+                                                                                      'Sonic100m_Scalar_Min', 'Sonic100m_Scalar_Max'],
+                                                                 factor =18)
+
+
 # check results:
 plot_cleaned_from_outliers_bool = False
-fn.plot_scatter_and_lines('Temperature',
-    df_WindData_cleaned_from_outliers['Temp100m_Mean'],
-    df_WindData_cleaned_from_outliers['Temp100m_Max'],
-    df_WindData_cleaned_from_outliers['Temp100m_Min'],
-    unit='°C', plot_bool=plot_cleaned_from_outliers_bool)
+for col in measured_values_column_names:
+    fn.plot_scatter(f'verify outlier removal',df_WindData_cleaned_from_outliers_sonic.index,
+                    df_WindData_cleaned_from_outliers_sonic[col],col,label_x='Time',
+                    label_y=col,plot_bool=plot_cleaned_from_outliers_bool)
+    
+
+#fn.plot_check_vane_filter(df_WindData_cleaned_from_outliers_sonic, 'before', 1.5)
+#filter vane outliers (1.5 degrees and below should be removed)
+df_filtered_vane = fn.filter_vane(df_WindData_cleaned_from_outliers_sonic, columns=['Vane100m_Mean','Vane100m_Min','Vane100m_Max'], lower_bound=1.5)
+#fn.plot_check_vane_filter(df_filtered_vane, 'after', 1.5)
+
+#fn.plot_check_ws_filter(df_filtered_vane,['Cup100m_Mean','Cup114m_Mean','Cup116m_Mean'],'before',3,np.inf,'Cup'),
+# filter speeds below 3 M/s for cups, no upper bound
+df_filtered_cups = fn.filter_high_and_low_ws_out_cup(df_filtered_vane, ['Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min', 
+                                                     'Cup114m_Mean', 'Cup114m_Max', 'Cup114m_Min',
+                                                      'Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'],3, np.inf)
+#fn.plot_check_ws_filter(df_filtered_cups,['Cup100m_Mean','Cup114m_Mean','Cup116m_Mean'],'after',3,np.inf,'Cup'),
+
+
+
+
 #%% Question 2)
-df_WindData = df_WindData_cleaned_from_outliers.copy()
+df_WindData = df_filtered_cups.copy()
 # # Plot the ratio of the cup anemometer and sonic wind speeds at 100m as a function of
 #  wind direction. Does the pattern you see agree with your understanding of how the instruments 
 # are mounted and their respective boom directions? 
@@ -141,9 +172,9 @@ plot_lidar_vs_cup = False
 # 0. no directional filter
 if plot_lidar_vs_cup == True:
         
-    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers, title="Comparison (No Directional Filter)")
+    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers_sonic, title="Comparison (No Directional Filter)")
 
-    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers, availability_threshold= 50, title="Comparison (No Directional Filter), Availabilty = 50%")
+    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers_sonic, availability_threshold= 50, title="Comparison (No Directional Filter), Availabilty = 50%")
     # 1. No filters
     fn.analyze_wind_speeds(df_comparison, title="Filtered comparison (No Availability Filter)")
 
@@ -158,7 +189,7 @@ if plot_lidar_vs_cup == True:
 
 
 # Apply ice filtering
-df_ice_filtered, points_removed = fn.filter_ice_on_cups(df_WindData, ice_threshold=4)
+df_ice_filtered, points_removed = fn.filter_ice_on_cups(df_WindData, ice_threshold=2)
 
 # Optionally plot results
 fn.plot_scatter('Cup Speeds Before and After Ice Filtering',
@@ -167,7 +198,7 @@ fn.plot_scatter('Cup Speeds Before and After Ice Filtering',
     df2x = df_ice_filtered['Temp100m_Mean'], df2y = df_ice_filtered['Cup100m_Mean'],
     label2='Ice Filtered',
     label_x = 'Temp [°C]', label_y = 'Wind Speed [m/s]',
-    plot_bool=True)
+    plot_bool=False)
 
      
 # A formal lidar calibration should only use wind speeds between 4 and 16 m/s. 
@@ -175,10 +206,32 @@ fn.plot_scatter('Cup Speeds Before and After Ice Filtering',
 
 
 #Filter low wind speeds (3m/s)
-fn.plot_check_ws_filter(df_ice_filtered,'before')
-df_filtered_ws = fn.filter_high_and_low_ws_out(df_ice_filtered, ['Spd', 'Spd_max', 'Spd_min'])
+# fn.plot_check_ws_filter(df,['Spd','Spd_min','Spd_max'],'before',4,16,'Lidar'),
+df_filtered_ws = fn.filter_high_and_low_ws_out_lidar(df_ice_filtered, ['Spd', 'Spd_max', 'Spd_min'])
 #check results:
-fn.plot_check_ws_filter(df_filtered_ws,'after')
+#fn.plot_check_ws_filter(df,['Spd','Spd_min','Spd_max'],'after',4,16,'Lidar'),
 
-df_Wind_Data = df_filtered_ws.copy()
+df_WindData = df_filtered_ws.copy()
 
+#%% Question 6
+# With all these filters applied, make a final regression of the lidar wind speed 
+# (y- axis) versus the reference cup anemometer speed (x-axis). Give the final 
+# regression results both for a regression allowing an offset and one with the 
+# offset fixed to zero (‘forced regression’). 
+ 
+
+
+#with offset, with directional filter
+fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50)
+
+#without offset, with directional filter, 
+fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50,forced=True)
+
+
+
+# Remove just the direction filter from the set that you used in 8) and make a 
+# scatter plot of the lidar wind direction versus the wind vane wind direction. If 
+# there are groups of points at 0 or 360 degrees that are a long way from the 
+# regression line, think about why they are there and try and find a way of 
+# removing them. Give the results of the linear regression. Does it make sense 
+# to make a regression here with a forced (through zero) offset? 

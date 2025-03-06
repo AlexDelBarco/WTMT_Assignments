@@ -140,7 +140,7 @@ def replace_zeros_with_nan(df, columns=None):
     
     return df_cleaned
 
-def filter_high_and_low_ws_out(df, columns=None, lower_bound=3.0, upper_bound=16.0):
+def filter_high_and_low_ws_out_lidar(df, columns=None, lower_bound=4.0, upper_bound=16.0):
     """
     Replace wind speeds outside the valid range [lower_bound, upper_bound] with NaN.
     For formal lidar calibration, valid range is typically 3-16 m/s.
@@ -184,17 +184,121 @@ def filter_high_and_low_ws_out(df, columns=None, lower_bound=3.0, upper_bound=16
     
     return df_cleaned
 
-def plot_check_ws_filter(df,title):
+def filter_high_and_low_ws_out_cup(df, columns=None, lower_bound=3.0, upper_bound=100.0):
+    """
+    Replace wind speeds outside the valid range [lower_bound, upper_bound] with NaN.
+    For formal lidar calibration, valid range is typically 3-16 m/s.
+    
+    Parameters:
+    df (pd.DataFrame): The input DataFrame
+    columns (list, optional): List of column names to check. Must be wind speed columns.
+                            If None, checks Cup*_Mean and Sonic*_Mean columns.
+    lower_bound (float): Minimum valid wind speed in m/s (default: 3.0)
+    upper_bound (float): Maximum valid wind speed in m/s (default: 16.0)
+    
+    Returns:
+    pd.DataFrame: DataFrame with invalid wind speeds replaced by NaN
+    """
+    df_cleaned = df.copy()
+    
+    # If no columns specified, use default wind speed columns
+    if columns is None:
+        # Find all lidar columns
+        columns = [col for col in df.columns if 
+                  ('Cup' in col and 'Mean' in col)]
+    
+    # Replace invalid wind speeds with NaN in specified columns
+    for column in columns:
+        try:
+            # Create mask for invalid wind speeds (too low or too high)
+            mask_low = df_cleaned[column] < lower_bound
+            mask_high = df_cleaned[column] > upper_bound
+            mask_combined = mask_low | mask_high
+            
+            if mask_combined.any():
+                low_count = mask_low.sum()
+                high_count = mask_high.sum()
+                df_cleaned.loc[mask_combined, column] = np.nan
+                print(f"Column {column}:")
+                print(f"  - Replaced {low_count} low wind speeds (<{lower_bound} m/s)")
+                print(f"  - Replaced {high_count} high wind speeds (>{upper_bound} m/s)")
+                print(f"  - Total replaced: {mask_combined.sum()}")
+        except Exception as e:
+            print(f"Error processing column {column}: {str(e)}")
+    
+    return df_cleaned
+
+def filter_vane(df, columns=None, lower_bound=1.5):
+    """
+    Replace directional data outside the valid range (lower_bound) with NaN.
+        
+    Parameters:
+    df (pd.DataFrame): The input DataFrame
+    columns (list, optional): List of column names to check. Must be wind vane columns.
+                            If None, checks Vane columns.
+    lower_bound (float): Minimum direction wind speed in m/s (default: 1.5)
+    
+    Returns:
+    pd.DataFrame: DataFrame with invalid wind speeds replaced by NaN
+    """
+    df_cleaned = df.copy()
+    
+    # If no columns specified, use default wind speed columns
+    if columns is None:
+        # Find all lidar columns
+        columns = [col for col in df.columns if 
+                  ('Vane' in col and 'Mean' in col)]
+    
+    # Replace invalid wind speeds with NaN in specified columns
+    for column in columns:
+        try:
+            # Create mask for invalid wind speeds (too low)
+            mask_low = df_cleaned[column] < lower_bound
+                        
+            if mask_low.any():
+                low_count = mask_low.sum()
+            
+                df_cleaned.loc[mask_low, column] = np.nan
+                print(f"Column {column}:")
+                print(f"  - Replaced {low_count} directional data below (<{lower_bound} m/s)")
+                
+        except Exception as e:
+            print(f"Error processing column {column}: {str(e)}")
+    
+    return df_cleaned
+
+def plot_check_vane_filter(df,title,lb):
     x_vals = [df.index.min(),df.index.max()]
-    lower_y_vals = [3,3]
-    upper_y_vals = [16,16]
+    lower_y_vals = [lb,lb]
+    
+    plt.figure(figsize=(50,10))
+    plt.scatter(df.index,df['Vane100m_Mean'], label = 'Mean', s = 5)
+    plt.scatter(df.index,df['Vane100m_Min'], label = 'Min', s = 5)
+    plt.scatter(df.index,df['Vane100m_Max'], label = 'Max', s = 5)
+    plt.plot(x_vals, lower_y_vals, label = 'ws filter lower bound', linewidth = 2)
+    plt.xlabel('Time [s]', fontsize=20)
+    plt.ylabel('Direction [°]', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.title(f'Vane filter check {title} filtering', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/lidar_ws_filter.png')
+    plt.show()
+
+
+def plot_check_ws_filter(df,plots,title,lb,ub,measurement):
+    x_vals = [df.index.min(),df.index.max()]
+    lower_y_vals = [lb,lb]
+    upper_y_vals = [ub,ub]
+    plot1, plot2, plot3 = plots
 
 
 
     plt.figure(figsize=(50,10))
-    plt.scatter(df.index,df['Spd'], label = 'Mean', s = 5)
-    plt.scatter(df.index,df['Spd_min'], label = 'Min', s = 5)
-    plt.scatter(df.index,df['Spd_max'], label = 'Max', s = 5)
+    plt.scatter(df.index,df[plot1], label = 'Mean', s = 5)
+    plt.scatter(df.index,df[plot2], label = 'Min', s = 5)
+    plt.scatter(df.index,df[plot3], label = 'Max', s = 5)
     plt.plot(x_vals, lower_y_vals, label = 'ws filter lower bound', linewidth = 2)
     plt.plot(x_vals, upper_y_vals, label = 'ws filter upper bound', linewidth = 2)
     plt.xlabel('Time [s]', fontsize=20)
@@ -202,9 +306,9 @@ def plot_check_ws_filter(df,title):
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
-    plt.title(f'Speed filter check means {title} removal', fontsize=25)
+    plt.title(f'Speed filter check means {title} {measurement} filtering', fontsize=25)
     plt.legend(fontsize=20)
-    plt.savefig(f'Pictures/lidar_ws_filter.png')
+    plt.savefig(f'Pictures/{measurement}_ws_filter.png')
     plt.show()
 
 
@@ -312,7 +416,7 @@ def plot_directional_check(df,title,highest_bound,lowest_bound):
     plt.legend(fontsize=20)
     plt.show()
 
-def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Comparison"):
+def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Comparison", forced=False):
     """
     Perform regression analysis between cup and lidar measurements
     
@@ -320,10 +424,15 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
     df (DataFrame): Input data
     availability_threshold (float): Minimum availability threshold (0-100)
     title (str): Plot title
+    forced (bool): If True, perform forced regression with offset fixed to zero
+    
+    Returns:
+    None
     """
     # Apply availability filter if specified
     if availability_threshold is not None:
         df = df[df['Available'] >= availability_threshold]
+        #print(df['Available'])
     
     # Get data without NaN values
     valid_data = df.dropna(subset=['Cup100m_Mean', 'Spd'])
@@ -333,9 +442,14 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
     y = valid_data['Spd'].values
     
     # Perform linear regression
-    reg = LinearRegression().fit(X, y)
+    if forced:
+        reg = LinearRegression(fit_intercept=False).fit(X, y)
+        offset = 0
+    else:
+        reg = LinearRegression().fit(X, y)
+        offset = reg.intercept_
+    
     gain = reg.coef_[0]
-    offset = reg.intercept_
     r2 = reg.score(X, y)
     
     # Create scatter plot
@@ -351,7 +465,7 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
     plt.show()
 
 
-def filter_ice_on_cups(df, ice_threshold=4):
+def filter_ice_on_cups(df, ice_threshold=2):
     """
     Filter the wind speed from the cup anemometer to exclude the possibility of ice on the cups.
     Ice typically forms when temperature is at or below 4°C (default threshold).
