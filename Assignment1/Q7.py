@@ -5,7 +5,9 @@ import numpy as np
 #%% CONSTANTS
 
 WS = [4, 8, 12]
-u_cal1 = 0.06
+u_cal1_abs = 0.06
+k_cal1 = 2
+u_cal1 = u_cal1_abs/k_cal1 # 
 u_cal2 = 0.01/np.sqrt(3)
 k_c = 0.8
 u_mount = 0.01
