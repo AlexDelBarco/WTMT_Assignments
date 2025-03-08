@@ -312,7 +312,7 @@ def plot_check_ws_filter(df,plots,title,lb,ub,measurement):
     plt.show()
 
 
-def replace_outliers_with_nan(df, columns=None, factor=3):
+def replace_outliers_with_nan(df, columns=None, factor=3,  abs_threshold=None):
 
     """
     Replace outlier values with NaN in specified columns of a DataFrame.
@@ -351,6 +351,12 @@ def replace_outliers_with_nan(df, columns=None, factor=3):
             df_cleaned.loc[mask, column] = np.nan
             print(f"Replaced {mask.sum()} outlier values with NaN in column: {column}")
             print(f"Average gradient: {avg_gradient:.2f}, Max allowed gradient: {max_allowed_gradient:.2f}")
+
+        if abs_threshold is not None:
+            abs_outlier_mask = (df_cleaned[column].abs() > abs_threshold)
+            df_cleaned.loc[abs_outlier_mask, column] = np.nan
+            if abs_outlier_mask.any():
+                print(f"Replaced {abs_outlier_mask.sum()} absolute outlier values with NaN in column: {column}")
     
     return df_cleaned
 

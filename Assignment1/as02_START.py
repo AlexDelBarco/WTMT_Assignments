@@ -44,16 +44,16 @@ df_WindData_cleaned, removed_rows_df = fn.convert_repeating_to_nan(df_WindData, 
 
 df_WindData_cleaned_from_outliers_temp = fn.replace_outliers_with_nan(df_WindData_cleaned,
                                                                  ['Temp100m_Mean', 'Temp100m_Max', 'Temp100m_Min'],
-                                                                 factor =18)
+                                                                 factor =3)
 
 df_WindData_cleaned_from_outliers_cup = fn.replace_outliers_with_nan(df_WindData_cleaned_from_outliers_temp,
                                                                  ['Cup100m_Mean', 'Cup100m_Max', 'Cup100m_Min',
                                                                   'Cup114m_Mean','Cup114m_Max', 'Cup114m_Min',
                                                                   'Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'],
-                                                                 factor =18)
+                                                                 factor =10)
 df_WindData_cleaned_from_outliers_sonic = fn.replace_outliers_with_nan(df_WindData_cleaned_from_outliers_cup,['Sonic100m_Scalar_Mean', 
                                                                                       'Sonic100m_Scalar_Min', 'Sonic100m_Scalar_Max'],
-                                                                 factor =18)
+                                                                 factor = 10)
 
 
 # check results:
@@ -63,7 +63,7 @@ for col in measured_values_column_names:
                     df_WindData_cleaned_from_outliers_sonic[col],col,label_x='Time',
                     label_y=col,plot_bool=plot_cleaned_from_outliers_bool)
     
-
+#%% Filter invalid vane and cups measurements
 #fn.plot_check_vane_filter(df_WindData_cleaned_from_outliers_sonic, 'before', 1.5)
 #filter vane outliers (1.5 degrees and below should be removed)
 df_filtered_vane = fn.filter_vane(df_WindData_cleaned_from_outliers_sonic, columns=['Vane100m_Mean','Vane100m_Min','Vane100m_Max'], lower_bound=1.5)
@@ -75,7 +75,6 @@ df_filtered_cups = fn.filter_high_and_low_ws_out_cup(df_filtered_vane, ['Cup100m
                                                      'Cup114m_Mean', 'Cup114m_Max', 'Cup114m_Min',
                                                       'Cup116m_Mean', 'Cup116m_Max', 'Cup116m_Min'],3, np.inf)
 #fn.plot_check_ws_filter(df_filtered_cups,['Cup100m_Mean','Cup114m_Mean','Cup116m_Mean'],'after',3,np.inf,'Cup'),
-
 
 
 
