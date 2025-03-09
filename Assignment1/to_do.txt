@@ -1,0 +1,3 @@
+make sure our functions dont remove values but only make NaNs
+make sure we only plot values against each other with the same date
+find out what happens when you plot two arrays against each other when one contains more NaNs than the other

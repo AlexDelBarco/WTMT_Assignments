@@ -122,17 +122,17 @@ lowest_bound_wt = 13.24
 #fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt)
 
 
-#df_WindData = fn.filter_direction(df_WindData)
-# Apply direction filter to get clean sector data
-df_filtered = fn.filter_direction(df_WindData, highest_bound_wt, lowest_bound_wt)
 
-# Check how many rows were filtered out
-print(f"Original rows: {len(df_WindData)}")
-print(f"Filtered rows: {len(df_filtered)}")
-print(f"Removed rows: {len(df_WindData) - len(df_filtered)}")
+# # Apply direction filter to get clean sector data
+# df_filtered = fn.filter_direction(df_WindData, highest_bound_wt, lowest_bound_wt)
 
-#set working dataframe to the filtered one after confirming that the filtering was successful
-df_WindData = df_filtered.copy()
+# # Check how many rows were filtered out
+# print(f"Original rows: {len(df_WindData)}")
+# print(f"Filtered rows: {len(df_filtered)}")
+# print(f"Removed rows: {len(df_WindData) - len(df_filtered)}")
+
+# #set working dataframe to the filtered one after confirming that the filtering was successful
+# df_WindData = df_filtered.copy()
 
 
 
@@ -158,8 +158,8 @@ df_WindData = df_filtered.copy()
 #  with the cup anemometer at 100m (Cup100m_Mean column)
 
 
-fn.plot_scatter('Wind Speed Comparison',df_filtered['Vane100m_Mean'], df_filtered['Cup100m_Mean'], 'Cup',
-                 df_filtered['Vane100m_Mean'], df_filtered['Spd'], 'Windcube', label_x = 'Wind Direction [°]', 
+fn.plot_scatter('Wind Speed Comparison',df_WindData['Vane100m_Mean'], df_WindData['Cup100m_Mean'], 'Cup',
+                 df_WindData['Vane100m_Mean'], df_WindData['Spd'], 'Windcube', label_x = 'Wind Direction [°]', 
                  label_y = 'Wind Speed [m/s]', plot_bool = False)
 
 # # Create new DataFrame for analysis
@@ -172,9 +172,9 @@ plot_lidar_vs_cup = False
 # 0. no directional filter
 if plot_lidar_vs_cup == True:
         
-    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers_sonic, title="Comparison (No Directional Filter)")
+    fn.analyze_wind_speeds(df_filtered_cups, title="Comparison (No Directional Filter)")
 
-    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers_sonic, availability_threshold= 50, title="Comparison (No Directional Filter), Availabilty = 50%")
+    fn.analyze_wind_speeds(df_filtered_cups, availability_threshold= 50, title="Comparison (No Directional Filter), Availabilty = 50%")
     # 1. No filters
     fn.analyze_wind_speeds(df_comparison, title="Filtered comparison (No Availability Filter)")
 
@@ -222,10 +222,10 @@ df_WindData = df_filtered_ws.copy()
 
 
 #with offset, with directional filter
-fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50)
+#fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50)
 
 #without offset, with directional filter, 
-fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50,forced=True)
+#fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50,forced=True)
 
 
 
@@ -235,3 +235,17 @@ fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directiona
 # regression line, think about why they are there and try and find a way of 
 # removing them. Give the results of the linear regression. Does it make sense 
 # to make a regression here with a forced (through zero) offset? 
+
+fn.plot_scatter('Lidar vs vane wind direction (unfiltered for turbine wakes)',
+                df_WindData['Vane100m_Mean'],df_WindData['Dir'],'Lidar vs Vane',
+                  label_x= 'Vane [°]', label_y = 'Lidar [°]', plot_bool=False)
+
+#fn.regression_directional(df_WindData,title = 'Lidar vs vane wind direction (unfiltered for turbine wakes)',forced=True)
+
+df_lidar_direction_filtered = fn.filter_lidar_directional_outliers(df_WindData,max_dif=115)
+# fn.plot_scatter('Lidar vs vane wind direction (unfiltered for turbine wakes)',
+#                 df_lidar_direction_filtered['Vane100m_Mean'],df_lidar_direction_filtered['Dir'],
+#                 'Lidar vs Vane post filtering',
+#                   label_x= 'Vane [°]', label_y = 'Lidar [°]', plot_bool=True)
+
+#fn.regression_directional(df_lidar_direction_filtered,title = 'Lidar vs vane wind direction (outliers filtered, but unfiltered for turbine wakes)',forced=True)

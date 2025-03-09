@@ -16,7 +16,7 @@ def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,heigh
         plt.yticks(fontsize=15)
         plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
         plt.legend(fontsize=20)
-        plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_line.png')
+        #plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_line.png')
         plt.show()
 
 
@@ -31,7 +31,7 @@ def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,heigh
         plt.yticks(fontsize=15)
         plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
         plt.legend(fontsize=20)
-        plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_scatter.png')
+        #plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_scatter.png')
         plt.show()
 
 def plot_scatter(title,df1x, df1y, label1, df2x = None, df2y = None, label2 = None, label_x = 'Time [s]', label_y ='Wind Speed (m/s)',plot_bool = False ):
@@ -60,7 +60,7 @@ def plot_scatter(title,df1x, df1y, label1, df2x = None, df2y = None, label2 = No
         plt.yticks(fontsize=15)
         plt.title(title, fontsize=25)
         plt.legend(fontsize=20)
-        plt.savefig(f'Pictures/{title}_10min_Time_Series_scatter.png')
+        #plt.savefig(f'Pictures/{title}_10min_Time_Series_scatter.png')
         plt.show()
 
 def plot_all_measurements(df,plot_bool = False):
@@ -466,6 +466,7 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
 
 
 def filter_ice_on_cups(df, ice_threshold=2):
+
     """
     Filter the wind speed from the cup anemometer to exclude the possibility of ice on the cups.
     Ice typically forms when temperature is at or below 4°C (default threshold).
@@ -505,3 +506,72 @@ def filter_ice_on_cups(df, ice_threshold=2):
     print(f"Percentage of data removed: {(points_removed/original_count)*100:.2f}%")
     
     return df_filtered, points_removed
+
+def regression_directional(df,title="Wind Direction Comparison", forced=False):
+
+    """
+    Perform regression analysis between cup and lidar measurements
+    
+    Parameters:
+    df (DataFrame): Input data
+    availability_threshold (float): Minimum availability threshold (0-100)
+    title (str): Plot title
+    forced (bool): If True, perform forced regression with offset fixed to zero
+    
+    Returns:
+    None
+    """
+    # Get data without NaN values
+    valid_data = df.dropna(subset=['Vane100m_Mean', 'Dir'])
+    
+    # Prepare data for regression
+    X = valid_data['Vane100m_Mean'].values.reshape(-1, 1)
+    y = valid_data['Dir'].values
+    
+    # Perform linear regression
+    if forced:
+        reg = LinearRegression(fit_intercept=False).fit(X, y)
+        offset = 0
+    else:
+        reg = LinearRegression().fit(X, y)
+        offset = reg.intercept_
+    
+    gain = reg.coef_[0]
+    r2 = reg.score(X, y)
+    
+    # Create scatter plot
+    plt.figure(figsize=(10, 6))
+    plt.scatter(X, y, alpha=0.5)
+    plt.plot(X, reg.predict(X), color='red', linewidth=2)
+    
+    plt.xlabel('Vane [°]')
+    plt.ylabel('Lidar [°]')
+    plt.title(f'{title}\nGain: {gain:.3f}, Offset: {offset:.3f}, R²: {r2:.3f}')
+    plt.grid(True)
+    #plt.savefig(f'Pictures/lidar_vane_regression.png')
+    plt.show()
+
+def filter_lidar_directional_outliers(df,max_dif=115):
+    # Create a copy to avoid modifying the original
+    df_filtered = df.copy()
+    
+    # Create mask for potential icing conditions
+    mask = np.abs(df_filtered['Vane100m_Mean']-df_filtered['Dir']) <= max_dif
+    
+    # Count original non-NaN values
+    original_count = df_filtered['Dir'].count().sum()
+    
+    # Set cup measurements to NaN where temperature indicates possible icing
+    df_filtered.loc[mask, 'Dir'] = np.nan
+    
+    # Count remaining non-NaN values
+    remaining_count = df_filtered['Dir'].count().sum()
+    points_removed = original_count - remaining_count
+    
+    print(f"Directional filtering results:")
+    print(f"Max allowed difference : {max_dif}°")
+    print(f"Total points removed: {points_removed}")
+    print(f"Percentage of data removed: {(points_removed/original_count)*100:.2f}%")
+    
+    return df_filtered, points_removed
+    
