@@ -96,6 +96,8 @@ fn.plot_scatter('Ratio of Cup Anemometer and Sonic Wind Speeds at 100m',
 # and would expect higher wind speeds measuremtns  from the cup when the wind is southern (180 degrees), 
 # and similarly higher ws meas from the sonic when the wind is northern (0/360 degrees), and this is what we see. nice.
 
+df_WindData_Q7 = df_WindData.copy()
+
 #%% Question 3)
 
 # # The coordinates of the mast are (56.440547°N, 8.150868°E). Noting the date of the dataset, 
@@ -228,10 +230,10 @@ df_WindData = df_filtered_ws.copy()
 
 
 #with offset, with directional filter
-fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50)
+fn.analyze_wind_speeds(df_WindData, title="Regression with directional filters",availability_threshold=95)
 
 #without offset, with directional filter, 
-fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directional filters",availability_threshold=50,forced=True)
+fn.analyze_wind_speeds(df_WindData, title="Regression with forced offset and directional filters",availability_threshold=95,forced=True)
 
 
 
@@ -241,6 +243,20 @@ fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directiona
 # regression line, think about why they are there and try and find a way of 
 # removing them. Give the results of the linear regression. Does it make sense 
 # to make a regression here with a forced (through zero) offset? 
+
+#%% Question 6.2
+
+
+df_ice_filtered_2, points_removed_2 = fn.filter_ice_on_cups(df_WindData_Q7, ice_threshold=2)
+
+df_WindData_Q7_F = fn.filter_high_and_low_ws_out_lidar(df_ice_filtered_2, ['Spd', 'Spd_max', 'Spd_min'])
+
+fn.analyze_wind_speeds(df_WindData, availability_threshold=95, title="Regression Wind Direction Lidar-Vane")
+
+fn.analyze_wind_speeds_2(df_WindData, availability_threshold=95, title="Regression Wind Direction Lidar-Vane")
+
+
+
 
 #%% Qusestion 7
 

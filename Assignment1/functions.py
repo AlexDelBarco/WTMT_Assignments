@@ -444,11 +444,11 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
         #print(df['Available'])
     
     # Get data without NaN values
-    valid_data = df.dropna(subset=['Cup100m_Mean', 'Spd'])
+    valid_data = df.dropna(subset=['Vane100m_Mean', 'Dir'])
     
     # Prepare data for regression
-    X = valid_data['Cup100m_Mean'].values.reshape(-1, 1)
-    y = valid_data['Spd'].values
+    X = valid_data['Vane100m_Mean'].values.reshape(-1, 1)
+    y = valid_data['Dir'].values
     
     # Perform linear regression
     if forced:
@@ -466,8 +466,8 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
     plt.scatter(X, y, alpha=0.5)
     plt.plot(X, reg.predict(X), color='red', linewidth=2)
     
-    plt.xlabel('Cup Anemometer Speed [m/s]')
-    plt.ylabel('Lidar Speed [m/s]')
+    plt.xlabel('Vane Wind Direction [deg]')
+    plt.ylabel('Lidar wind Direction [deg]')
     plt.title(f'{title}\nGain: {gain:.3f}, Offset: {offset:.3f}, R²: {r2:.3f}')
     plt.grid(True)
     plt.savefig(f'Pictures/{title}_lidar_cup_regression_{availability_threshold}.png')
@@ -475,6 +475,8 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
 
 
 def filter_ice_on_cups(df, ice_threshold=2):
+
+
     """
     Filter the wind speed from the cup anemometer to exclude the possibility of ice on the cups.
     Ice typically forms when temperature is at or below 4°C (default threshold).
@@ -514,3 +516,55 @@ def filter_ice_on_cups(df, ice_threshold=2):
     print(f"Percentage of data removed: {(points_removed/original_count)*100:.2f}%")
     
     return df_filtered, points_removed
+
+
+def analyze_wind_speeds_2(df, availability_threshold=None, title="Wind Speed Comparison", forced=False):
+    """
+    Perform regression analysis between cup and lidar measurements
+    
+    Parameters:
+    df (DataFrame): Input data
+    availability_threshold (float): Minimum availability threshold (0-100)
+    title (str): Plot title
+    forced (bool): If True, perform forced regression with offset fixed to zero
+    
+    Returns:
+    None
+    """
+    # Apply availability filter if specified
+    if availability_threshold is not None:
+        df = df[df['Available'] >= availability_threshold]
+        #print(df['Available'])
+    
+    # Get data without NaN values
+    valid_data = df.dropna(subset=['Vane100m_Mean', 'Dir'])
+    
+    # Filter out data points where the difference between Vane100m_Mean and Dir is greater than 2
+    valid_data = valid_data[np.abs(valid_data['Vane100m_Mean'] - valid_data['Dir']) <= 20]
+    
+    # Prepare data for regression
+    X = valid_data['Vane100m_Mean'].values.reshape(-1, 1)
+    y = valid_data['Dir'].values
+    
+    # Perform linear regression
+    if forced:
+        reg = LinearRegression(fit_intercept=False).fit(X, y)
+        offset = 0
+    else:
+        reg = LinearRegression().fit(X, y)
+        offset = reg.intercept_
+    
+    gain = reg.coef_[0]
+    r2 = reg.score(X, y)
+    
+    # Create scatter plot
+    plt.figure(figsize=(10, 6))
+    plt.scatter(X, y, alpha=0.5)
+    plt.plot(X, reg.predict(X), color='red', linewidth=2)
+    
+    plt.xlabel('Vane Wind Direction [deg]')
+    plt.ylabel('Lidar wind Direction [deg]')
+    plt.title(f'{title}\nGain: {gain:.3f}, Offset: {offset:.3f}, R²: {r2:.3f}')
+    plt.grid(True)
+    plt.savefig(f'Pictures/{title}_lidar_cup_regression_2_{availability_threshold}.png')
+    plt.show()
