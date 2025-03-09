@@ -166,14 +166,14 @@ df_WindData = df_filtered.copy()
 
 fn.plot_scatter('Wind Speed Comparison',df_filtered['Vane100m_Mean'], df_filtered['Cup100m_Mean'], 'Cup',
                  df_filtered['Vane100m_Mean'], df_filtered['Spd'], 'Windcube', label_x = 'Wind Direction [°]', 
-                 label_y = 'Wind Speed [m/s]', plot_bool = True)
+                 label_y = 'Wind Speed [m/s]', plot_bool = False)
 
 # # Create new DataFrame for analysis
 df_comparison = df_WindData.copy()
 
 # Function to perform regression analysis and create scatter plot
 
-plot_lidar_vs_cup = True
+plot_lidar_vs_cup = False
 # Create different comparison plots
 # 0. no directional filter
 if plot_lidar_vs_cup == True:
@@ -204,7 +204,7 @@ fn.plot_scatter('Cup Speeds Before and After Ice Filtering',
     df2x = df_ice_filtered['Temp100m_Mean'], df2y = df_ice_filtered['Cup100m_Mean'],
     label2='Ice Filtered',
     label_x = 'Temp [°C]', label_y = 'Wind Speed [m/s]',
-    plot_bool=False)
+    plot_bool=True)
 
      
 # A formal lidar calibration should only use wind speeds between 4 and 16 m/s. 
@@ -241,3 +241,36 @@ fn.analyze_wind_speeds(df_WindData, title="Regression with offset and directiona
 # regression line, think about why they are there and try and find a way of 
 # removing them. Give the results of the linear regression. Does it make sense 
 # to make a regression here with a forced (through zero) offset? 
+
+#%% Qusestion 7
+
+WS = [4, 8, 12]
+u_cal1_abs = 0.06
+k_cal1 = 2
+u_cal1 = u_cal1_abs/k_cal1 # 
+u_cal2 = 0.01/np.sqrt(3)
+k_c = 0.8
+u_mount = 0.01
+
+
+def compute_Uv(k_c, V, u_cal1, u_cal2, u_mount):
+
+    u_ope = k_c/(100) * 1/(np.sqrt(3)) * (0.5*V+5)
+
+    u_cal = np.sqrt(u_cal1**2 + u_cal2**2)
+
+    U_v = np.sqrt(u_cal**2 + u_mount**2 + u_ope**2)
+
+    return U_v
+
+
+
+results_ab = {}
+results_rel = {}
+
+for W in WS:
+    U_v = compute_Uv(k_c, W, u_cal1, u_cal2, u_mount)
+    results_ab[W] = U_v
+
+    results_rel[W] = U_v/W
+
