@@ -361,7 +361,7 @@ def replace_outliers_with_nan(df, columns=None, factor=3,  abs_threshold=None):
     return df_cleaned
 
 
-def filter_direction(df, highest_bound, lowest_bound):
+def filter_direction(df, highest_bound, lowest_bound, meas):
     """
     Filter the dataframe to only include rows where the wind direction is OUTSIDE 
     the turbine wake sector (346.47° - 13.24°).
@@ -376,12 +376,12 @@ def filter_direction(df, highest_bound, lowest_bound):
     """
     # Handle the wrap-around at 360 degrees properly
     # Keep data where direction is NOT in the turbine wake sector
-    mask = ~((df['Vane100m_Mean'] >= highest_bound) | (df['Vane100m_Mean'] <= lowest_bound))
+    mask = ~((df[meas] >= highest_bound) | (df[meas] <= lowest_bound))
     
     filtered_df = df[mask]
     
     # Print info about filtered directions
-    remaining_directions = filtered_df['Vane100m_Mean'].dropna()
+    remaining_directions = filtered_df[meas].dropna()
     print(f"Direction range in filtered data: {remaining_directions.min():.2f}° - {remaining_directions.max():.2f}°")
     
     return filtered_df
@@ -403,23 +403,26 @@ def exclude_house_sector(df):
     
     return filtered_df
 
-def plot_directional_check(df,title,highest_bound,lowest_bound):
+def plot_directional_check(df,title,highest_bound,lowest_bound, meas):
     direction_filter_lower_bound_list = [lowest_bound,lowest_bound]
     direction_filter_upper_bound_list = [highest_bound,highest_bound]
     y_values_list = [0,30]
 
 
     plt.figure(figsize=(50,10))
-    plt.scatter(df['Vane100m_Mean'],df['Cup100m_Mean'], label = 'mean', s = 5)
-    plt.scatter(direction_filter_lower_bound_list, y_values_list, label = 'direction filter', s = 5)
-    plt.scatter(direction_filter_upper_bound_list, y_values_list, label = 'direction filter', s = 5)
+    plt.scatter(df[meas],df['Cup100m_Mean'], label = 'mean', s = 5)
+    plt.axvline(x=lowest_bound, color='r', linestyle='--', label='direction filter lower bound')
+    plt.axvline(x=highest_bound, color='g', linestyle='--', label='direction filter upper bound')
+    #plt.scatter(direction_filter_lower_bound_list, y_values_list, label = 'direction filter', s = 5)
+    #plt.scatter(direction_filter_upper_bound_list, y_values_list, label = 'direction filter', s = 5)
     plt.xlabel('Wind Direction [°]', fontsize=20)
     plt.ylabel('Wind Speed (m/s)', fontsize=20)
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
-    plt.title(f'Directional filter check {title}', fontsize=25)
+    plt.title(f'Directional filter {meas} {title}', fontsize=25)
     plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/direction_filter_{meas}.png')
     plt.show()
 
 def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Comparison", forced=False):

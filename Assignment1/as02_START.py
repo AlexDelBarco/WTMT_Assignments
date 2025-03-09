@@ -92,7 +92,9 @@ fn.plot_scatter('Ratio of Cup Anemometer and Sonic Wind Speeds at 100m',
                 df_WindData['Sonic100m_Dir'], df_WindData['Speed_Ratio'], label1 = 'speed ratio', label_y ='Speed Ratio (Cup/Sonic)', 
                 label_x = 'Wind Direction (Sonic) (°)',plot_bool = plot_speed_ratio_sonic)
 
-# # We see that the cup is mounted upstream with southwind, and the sonic is mounted downstream, and would expect higher wind speeds measuremtns  from the cup when the wind is southern (180 degrees), and similarly higher ws meas from the sonic when the wind is northern (0/360 degrees), and this is what we see. nice.
+# # We see that the cup is mounted upstream with southwind, and the sonic is mounted downstream, 
+# and would expect higher wind speeds measuremtns  from the cup when the wind is southern (180 degrees), 
+# and similarly higher ws meas from the sonic when the wind is northern (0/360 degrees), and this is what we see. nice.
 
 #%% Question 3)
 
@@ -118,20 +120,25 @@ fn.plot_scatter('Ratio of Cup Anemometer and Sonic Wind Speeds at 100m',
 highest_bound_wt = 346.47 
 lowest_bound_wt = 13.24
 #filter out the data that is not within the bounds
-#fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt)
+fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt,  'Vane100m_Mean')
+fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt, 'Sonic100m_Dir')
 
 
-#df_WindData = fn.filter_direction(df_WindData)
+#df_WindData = fn.filter_direction(df_WindData, 0,0)
 # Apply direction filter to get clean sector data
-df_filtered = fn.filter_direction(df_WindData, highest_bound_wt, lowest_bound_wt)
+df_filtered_b = fn.filter_direction(df_WindData, highest_bound_wt, lowest_bound_wt, 'Vane100m_Mean')
+df_filtered = fn.filter_direction(df_filtered_b, highest_bound_wt, lowest_bound_wt, 'Sonic100m_Dir')
 
 # Check how many rows were filtered out
-print(f"Original rows: {len(df_WindData)}")
-print(f"Filtered rows: {len(df_filtered)}")
-print(f"Removed rows: {len(df_WindData) - len(df_filtered)}")
+#print(f"Original rows: {len(df_WindData)}")
+#print(f"Filtered rows: {len(df_filtered)}")
+#print(f"Removed rows: {len(df_WindData) - len(df_filtered)}")
 
 #set working dataframe to the filtered one after confirming that the filtering was successful
 df_WindData = df_filtered.copy()
+
+#fn.plot_directional_check(df_WindData,'after filtering',highest_bound_wt,lowest_bound_wt, 'Vane100m_Mean')
+#fn.plot_directional_check(df_WindData,'after filtering',highest_bound_wt,lowest_bound_wt, 'Sonic100m_Dir')
 
 
 
@@ -166,7 +173,7 @@ df_comparison = df_WindData.copy()
 
 # Function to perform regression analysis and create scatter plot
 
-plot_lidar_vs_cup = False
+plot_lidar_vs_cup = True
 # Create different comparison plots
 # 0. no directional filter
 if plot_lidar_vs_cup == True:
