@@ -120,8 +120,8 @@ fn.plot_scatter('Ratio of Cup Anemometer and Sonic Wind Speeds at 100m',
 highest_bound_wt = 346.47 
 lowest_bound_wt = 13.24
 #filter out the data that is not within the bounds
-fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt,  'Vane100m_Mean')
-fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt, 'Sonic100m_Dir')
+#fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt,  'Vane100m_Mean')
+#fn.plot_directional_check(df_WindData,'before filtering',highest_bound_wt,lowest_bound_wt, 'Sonic100m_Dir')
 
 
 #df_WindData = fn.filter_direction(df_WindData, 0,0)
@@ -166,7 +166,7 @@ df_WindData = df_filtered.copy()
 
 fn.plot_scatter('Wind Speed Comparison',df_filtered['Vane100m_Mean'], df_filtered['Cup100m_Mean'], 'Cup',
                  df_filtered['Vane100m_Mean'], df_filtered['Spd'], 'Windcube', label_x = 'Wind Direction [°]', 
-                 label_y = 'Wind Speed [m/s]', plot_bool = False)
+                 label_y = 'Wind Speed [m/s]', plot_bool = True)
 
 # # Create new DataFrame for analysis
 df_comparison = df_WindData.copy()
@@ -180,7 +180,7 @@ if plot_lidar_vs_cup == True:
         
     fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers_sonic, title="Comparison (No Directional Filter)")
 
-    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers_sonic, availability_threshold= 50, title="Comparison (No Directional Filter), Availabilty = 50%")
+    fn.analyze_wind_speeds(df_WindData_cleaned_from_outliers_sonic, availability_threshold= 95, title="Comparison (No Directional Filter), Availabilty = 95%")
     # 1. No filters
     fn.analyze_wind_speeds(df_comparison, title="Filtered comparison (No Availability Filter)")
 

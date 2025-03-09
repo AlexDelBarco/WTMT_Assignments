@@ -470,7 +470,7 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
     plt.ylabel('Lidar Speed [m/s]')
     plt.title(f'{title}\nGain: {gain:.3f}, Offset: {offset:.3f}, R²: {r2:.3f}')
     plt.grid(True)
-    plt.savefig(f'Pictures/lidar_cup_regression_{availability_threshold}.png')
+    plt.savefig(f'Pictures/{title}_lidar_cup_regression_{availability_threshold}.png')
     plt.show()
 
 
