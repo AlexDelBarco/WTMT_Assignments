@@ -52,7 +52,7 @@ def plot_scatter(title,df1x, df1y, label1, label_x = 'Time [s]', label_y ='Wind 
     """
     if plot_bool == True:
         plt.figure(figsize=(50,10))
-        plt.scatter(df1x,df1y, label = label1,s=5)
+        plt.scatter(df1x,df1y, label = label1)
         if df2x is not None:
             plt.scatter(df2x,df2y, label = label2,s=5)
         if df3x is not None:
@@ -617,3 +617,135 @@ def vapor_pressure(T_10min):
         Vapor pressure in Pascal
     """
     return 0.0000205 * np.exp(0.0631846 * T_10min)
+
+def calculate_rho(df,pressure, temperature, humidity_rel, vapor_pressure,R0 = 287.05,R_W = 461.5):
+    """_summary_
+    Calculate air density (rho) based on pressure, temperature, relative humidity, 
+    and vapor pressure using the ideal gas law.
+    
+    Args:
+    df (pd.DataFrame): A pandas DataFrame containing the input data.
+    pressure (str): Column name in the DataFrame for atmospheric pressure in hPa.
+    temperature (str): Column name in the DataFrame for temperature in Kelvin.
+    humidity_rel (str): Column name in the DataFrame for relative humidity as a percentage.
+    vapor_pressure (str): Column name in the DataFrame for vapor pressure in Pa.
+    pd.Series: A pandas Series containing the calculated air density (rho) values.
+
+    Notes:
+    - The function assumes that the input DataFrame contains the specified columns.
+    - The gas constants used in the calculation are:
+        R0: Specific gas constant for dry air (287.05 J/(kg·K)).
+        R_W: Specific gas constant for water vapor (461.5 J/(kg·K)).
+    - Ensure that temperature is provided in Kelvin, pressure in hPa, and vapor pressure in Pa.
+    - Relative humidity is converted from percentage to a fraction for the calculation.
+
+    Returns: pd.Series containing the calculated air density values.
+
+    """
+    pressure = df[pressure]*100 #hPa to Pa
+    temperature = df[temperature] #K (Use kelvin converted column)
+    humidity_rel = df[humidity_rel]/100 #relative humidity to fraction
+    vapor_pressure = df[vapor_pressure] #Pa
+    #calculate the air density
+    rho = 1/temperature*(pressure/R0-humidity_rel*vapor_pressure*(1/R0-1/R_W))
+    return rho
+
+def normalize_power_stall_regulated(df,P_avg,rho_avg,rho_0 = 1.225):
+    """_summary_
+
+    Args:
+        df (DataFrame): containing data for power and air density
+        P_avg (Str): column in data containing power
+        rho_avg (Str): column in data containing air density
+        
+    Returns:
+        Pn (Series): normalized power
+    """
+    Pn = df[P_avg]*(rho_0/df[rho_avg])
+    return Pn
+
+def normalize_wind_active_controlled(df,V_avg,rho_avg,rho_0 = 1.225):
+    """_summary_
+
+    Args:
+        df (DataFrame): containing data for power and air density
+        V_avg (Str): column in data containing wind speeds
+        rho_avg (Str): column in data containing air density
+        
+    Returns:
+        Pn (Series): normalized power
+    """
+    Vn = df[V_avg]*(df[rho_avg]/rho_0)**(1/3)
+    return Vn
+
+def plot_errorbar(df_binned,ws,power,label,title, xlabel, ylabel,showplot = False):
+    """_summary_
+    plot power curve with uncertainties
+
+    Args:
+
+        df_binned (Dataframe): binned dataframe with power and wind speed 
+        ws (Str)): column name for wind speed
+        power (Str): column name for power
+        title (Str): title of the plot
+    """
+    if showplot:
+        plt.figure(figsize=(10, 6))
+        plt.errorbar(df_binned[ws], df_binned[power], 
+                    yerr=df_binned['u_c'], fmt='o-', capsize=5,
+                    label=label)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.title(title)
+        plt.grid(True)
+        plt.legend()
+        plt.savefig(f'Pictures/{title}.png')
+        plt.show()
+    
+
+def sensitivity_wind_speed(P_i, P_im1, V_i, V_im1):
+    """Calculate sensitivity factor for wind speed."""
+    return abs(P_i - P_im1) / abs(V_i - V_im1)
+
+def sensitivity_pressure(cV_i, V_i):
+    """Calculate sensitivity factor for air pressure."""
+    return cV_i * V_i / (3 * 1013)
+
+def sensitivity_temperature(cV_i, V_i):
+    """Calculate sensitivity factor for air temperature."""
+    return cV_i * V_i / (3 * 288.15)
+
+def sensitivity_relative_humidity(cV_i, V_i):
+    """Calculate sensitivity factor for relative humidity."""
+    return cV_i * V_i * 0.0018
+
+def uncertainty_power(P_i):
+    """Calculate Category B uncertainty in electric power."""
+    sensitivity_factor = 1
+    u_Pi =  np.sqrt((0.002 * P_i) ** 2 + 3.7**2 + 0.3**2)
+    return u_Pi, sensitivity_factor
+
+def uncertainty_wind_speed(V_i):
+    """Calculate Category B uncertainty in wind speed."""
+    u_Vi = np.sqrt(0.025**2 + (0.038 + 0.0038 * V_i) ** 2 +
+     (0.01 * V_i) ** 2 + (0.02 * V_i) ** 2 + (0.001 * V_i) ** 2)
+    sensitivity_factor = sensitivity_wind_speed(P_i, P_im1, V_i, V_im1)
+    return u_Vi, sensitivity_factor
+
+def uncertainty_temperature():
+    """Category B uncertainty in air temperature (constant value)."""
+    u_Ti = 0.6  # in Kelvin
+    sensitivity_factor = sensitivity_temperature(cV_i, V_i)
+    return u_Ti, sensitivity_factor
+
+def uncertainty_pressure():
+    """Category B uncertainty in air pressure (constant value)."""
+    u_Bi = 2.0  # in hPa
+    sensitivity_factor = sensitivity_pressure(cV_i, V_i)
+    return u_Bi, sensitivity_factor
+
+def uncertainty_relative_humidity():
+    """Category B uncertainty in relative humidity (constant value)."""
+    u_RHi = 0.63  # in %RH
+    sensitivity_factor = sensitivity_relative_humidity(cV_i, V_i)
+    return u_RHi, sensitivity_factor
