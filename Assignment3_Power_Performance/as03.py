@@ -67,6 +67,7 @@ A = np.pi * (D/2)**2 #m^2
 R0 = 287.05 #J/kgK
 R_W = 461.5 #J/kgK
 rho_0 = 1.225 #kg/m^3 #Reference air density
+Nh = 365*24 #hours in a year
 #%% Q3.2: Determine the filtered and normalized power curve based on data recorded during January - July 2023. 
 # A) Perform data normalization and report the mean air density at the site. 
 #make a kelvin column (we need temp in kelvin for vapor pressure calculation)
@@ -108,64 +109,12 @@ fn.plot_scatter('Normalized Wind Speed',df.index,df['norm_ws'],'Normalized Wind 
 
 #Power curve determination
 #use ws bins delta=0.5 m/s centered around 2.0,2.5,3.0... 25 m/s
-def calculate_power_curve_bins(df, ws_bins, A):
-    """
-    Calculate binned statistics and uncertainties for power curve determination.
-    
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        DataFrame with normalized wind speed and power
-    ws_bins : numpy.ndarray
-        Wind speed bin edges
-    D : float
-        Rotor diameter [m]
-    """
-    df_copy = df.copy()
-    # Create bins in the dataframe
-    df_copy['ws_bins'] = pd.cut(df_copy['norm_ws'], bins=ws_bins)
-    
-    # Calculate statistics for each bin
-    df_binned = df_copy.groupby('ws_bins', observed=True).agg({
-        'norm_ws': ['mean', 'count'],
-        'norm_power': ['mean', 'std'],
-        'rho': 'mean'
-    }).fillna(0)
-
-    # Flatten column names
-    df_binned.columns = ['mean_ws', 'count', 'mean_power', 'std_power','mean_rho']
-    df_binned = df_binned.reset_index()
-
-    # Get bin centers from the actual intervals in the data
-    df_binned['binned_ws'] = df_binned['ws_bins'].apply(lambda x: (x.left + x.right) / 2)
-
-    # Calculate category A uncertainty (si)
-    df_binned['s_i'] = df_binned['std_power'] / np.sqrt(df_binned['count'])
-    
-    # Calculate category B uncertainty (ui)
-    u_V = 0.03  # 3% uncertainty in wind speed
-    u_P = 0.02  # 2% uncertainty in power
-    df_binned['u_i'] = np.sqrt((u_V * df_binned['mean_ws'])**2 + 
-                              (u_P * df_binned['mean_power'])**2)
-    
-    # Calculate combined uncertainty (uci)
-    df_binned['u_c'] = np.sqrt(df_binned['s_i']**2 + df_binned['u_i']**2)
-
-    
-    df_binned['Cp'] = df_binned['mean_power'] * 1000 / (0.5 * df_binned['mean_rho'] * A * df_binned['mean_ws']**3)
-
-    # Reorder columns for readability
-    columns = ['binned_ws', 'mean_ws', 'mean_power','mean_rho', 'std_power', 
-              'count', 'Cp', 's_i', 'u_i', 'u_c']
-    df_binned = df_binned[columns]
-    
-    return df_binned
 
 # Define bin edges for centers at 2.0, 2.5, 3.0, etc.
 ws_bins = np.arange(1.75, 20.75, 0.5)
 
 # Calculate binned statistics
-df_binned = calculate_power_curve_bins(df, ws_bins, D)
+df_binned = fn.calculate_power_curve_bins(df, ws_bins, D)
 # Save results to CSV
 df_binned.to_csv('binned_statistics.csv', float_format='%.3f')
 
@@ -174,52 +123,49 @@ df_binned.to_csv('binned_statistics.csv', float_format='%.3f')
 
 
 #Bin-averaged power, Pi, as function of bin-averaged mean wind speed Vi including combined uncertainty as ”errorbar”
-fn.plot_errorbar(df_binned,'binned_ws','mean_power', 'Power curve with combined uncertainty',
+fn.plot_errorbar(df_binned,'binned_ws','mean_power', 'u_c', 'Power curve with combined uncertainty',
 'Measured Power Curve with Uncertainties','Normalized Wind Speed [m/s]', 'Normalized Power [kW]',showplot=False)
 
 #Bin-averaged Cp as function of bin-averaged mean wind speed Vi.
 fn.plot_scatter('Mean Wind Speed vs Cp',df_binned['mean_ws'],df_binned['Cp'],
 'Mean Wind Speed vs Cp',label_x='Mean Wind Speed [m/s]',label_y='Cp [-]',
-                plot_bool=True)
+                plot_bool=False,draw_line = True)
+
 
 # table: bin no-i, Vi, Pi, Cp, si, ui & uci
-# AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated 
+
+
+#Print power curve stats
+fn.print_power_curve_stats(df_binned)
 
 
 
-
-
-
-
-# Print summary statistics
-print("\nSite Statistics:")
-print(f"Mean air density: {df['rho'].mean():.3f} kg/m³")
-print("\nBin Statistics Summary:")
-print(df_binned.to_string(float_format=lambda x: '{:.3f}'.format(x)))
-
-# Print summary statistics
-print("\nSite Statistics:")
-print(f"Mean air density: {df['rho'].mean():.3f} kg/m³")
-print("\nBin Statistics Summary:")
-pd.set_option('display.max_rows', None)  # Show all rows
-pd.set_option('display.max_columns', None)  # Show all columns
-pd.set_option('display.width', None)  # Don't wrap wide tables
-pd.set_option('display.precision', 3)  # Set decimal places
-
-# Create a more readable format for the table
-print("\nPower Curve Statistics:")
-print("=" * 120)  # Separator line
-print(df_binned.to_string(
-    index=False,
-    float_format=lambda x: '{:8.3f}'.format(x),
-    col_space=12,  # Minimum column width
-    justify='right'
-))
-print("=" * 120)  # Separator line
 
 #%% Q3.3: Calculate and report the results of AEP-measured and AEP-extrapolated using 
 #Rayleigh wind speed distributions with average annual wind speed at hub height 𝑉𝑎𝑣𝑒=4, 5, 
 #6, 7 8, 9, 10 and 11 m/s, together with their corresponding (absolute and relative) 
 #uncertainties and complete/incomplete labels. The AEP uncertainty should be calculated 
 #according to Ref. 1, Annex E, based on parameters listed in Annex 2.
+
+# Create DataFrame with Vave values and calculated AEP data
+V_ave = np.arange(4, 12)  # Rayleigh mean wind speeds from 4 to 11 m/s
+df_AEP = pd.DataFrame()
+df_AEP['V_ave'] = V_ave
+AEP, uncertainty_AEP = fn.calculate_AEP(df_binned)
+df_AEP['AEP'] = AEP
+df_AEP['uncertainty_AEP'] = uncertainty_AEP 
+
+# print(f"Annual Energy Production (AEP): {AEP}")
+fn.plot_scatter('Annual Energy Production (AEP) at Rayleigh WS',V_ave,AEP,'AEP',
+label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
+                plot_bool=False)
+
+#print(f'Lenght Uncertainty AEP : {len(uncertainty_AEP)}')    
+#print(f'Lenght  AEP : {len(AEP)}')    
+
+fn.plot_errorbar(df_AEP,'V_ave', 'AEP', 'uncertainty_AEP',
+ 'AEP w. Uncertainty','Annual Energy Production (AEP) at Rayleigh WS with Uncertainty',
+  'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',showplot = True)
+
+# AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated 
 

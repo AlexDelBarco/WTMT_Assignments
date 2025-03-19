@@ -35,35 +35,50 @@ def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,heigh
         plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_scatter.png')
         plt.show()
 
-def plot_scatter(title,df1x, df1y, label1, label_x = 'Time [s]', label_y ='Wind Speed (m/s)',plot_bool = False, df2x = None, df2y = None, label2 = None, df3x = None, df3y = None, label3 = None):
-    """_summary_
-
+def plot_scatter(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Speed (m/s)', 
+                plot_bool=False, df2x=None, df2y=None, label2=None, df3x=None, df3y=None, 
+                label3=None, draw_line=False):
+    """Plot scatter data with optional connecting line through first dataset.
+    
     Args:
-        title (String): _description_
-        df1x (df): _description_
-        df1y (df): _description_
-        label1 (String): _description_
-        df2x (df, optional): _description_. Defaults to None.
-        df2y (df, optional): _description_. Defaults to None.
-        label2 (String, optional): _description_. Defaults to None.
-        label_x (String, optional): _description_. Defaults to 'Time [s]'.
-        label_y (str, optional): _description_. Defaults to 'Wind Speed (m/s)'.
-        plot_bool (bool, optional): _description_. Defaults to False.
+        title (str): Plot title
+        df1x (array-like): X values for first dataset
+        df1y (array-like): Y values for first dataset
+        label1 (str): Label for first dataset
+        label_x (str): X-axis label
+        label_y (str): Y-axis label
+        plot_bool (bool): Whether to show plot
+        df2x (array-like, optional): X values for second dataset
+        df2y (array-like, optional): Y values for second dataset
+        label2 (str, optional): Label for second dataset
+        df3x (array-like, optional): X values for third dataset
+        df3y (array-like, optional): Y values for third dataset
+        label3 (str, optional): Label for third dataset
+        draw_line (bool): Whether to draw a line through first dataset
     """
-    if plot_bool == True:
+    if plot_bool:
         plt.figure(figsize=(50,10))
-        plt.scatter(df1x,df1y, label = label1)
+        
+        # Plot first dataset with optional line
+        plt.scatter(df1x, df1y, label=label1)
+        if draw_line:
+            plt.plot(df1x, df1y, '-', alpha=0.5)
+            
+        # Plot second dataset if provided
         if df2x is not None:
-            plt.scatter(df2x,df2y, label = label2,s=5)
+            plt.scatter(df2x, df2y, label=label2, s=5)
+                
+        # Plot third dataset if provided
         if df3x is not None:
-            plt.scatter(df3x,df3y, label = label3,s=5)
+            plt.scatter(df3x, df3y, label=label3, s=5)
+                
         plt.xlabel(label_x, fontsize=20)
         plt.ylabel(label_y, fontsize=20)
         plt.xticks(fontsize=15)
         plt.yticks(fontsize=15)
         plt.title(title, fontsize=25)
         plt.legend(fontsize=20)
-        # Use proper path handling for saving
+        
         pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures')
         save_path = os.path.join(pictures_dir, f'{title}_10min_Time_Series_scatter.png')
         plt.savefig(save_path)        
@@ -678,59 +693,121 @@ def normalize_wind_active_controlled(df,V_avg,rho_avg,rho_0 = 1.225):
     Vn = df[V_avg]*(df[rho_avg]/rho_0)**(1/3)
     return Vn
 
-def plot_errorbar(df_binned,ws,power,label,title, xlabel, ylabel,showplot = False):
-    """_summary_
-    plot power curve with uncertainties
-
-    Args:
-
-        df_binned (Dataframe): binned dataframe with power and wind speed 
-        ws (Str)): column name for wind speed
-        power (Str): column name for power
-        title (Str): title of the plot
+def calculate_power_curve_bins(df, ws_bins, A):
     """
-    if showplot:
-        plt.figure(figsize=(10, 6))
-        plt.errorbar(df_binned[ws], df_binned[power], 
-                    yerr=df_binned['u_c'], fmt='o-', capsize=5,
-                    label=label)
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        plt.title(title)
-        plt.grid(True)
-        plt.legend()
-        plt.savefig(f'Pictures/{title}.png')
-        plt.show()
+    Calculate binned statistics and uncertainties for power curve determination.
     
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        DataFrame with normalized wind speed and power
+    ws_bins : numpy.ndarray
+        Wind speed bin edges
+    D : float
+        Rotor diameter [m]
+    """
+    df_copy = df.copy()
+    # Create bins in the dataframe
+    df_copy['ws_bins'] = pd.cut(df_copy['norm_ws'], bins=ws_bins)
+    
+    # Calculate statistics for each bin
+    df_binned = df_copy.groupby('ws_bins', observed=True).agg({
+        'norm_ws': ['mean', 'count'],
+        'norm_power': ['mean', 'std'],
+        'rho': 'mean',
+        'AirAbs_70m': 'mean',
+        'Press_enc_2m': 'mean',
+        'RH_2m': 'mean'
+    }).fillna(0)
+
+    # Flatten column names
+    df_binned.columns = ['mean_ws', 'count', 'mean_power', 'std_power','mean_rho','mean_Temp_C', 'mean_pressure','mean_rel_humidity']
+    df_binned = df_binned.reset_index()
+
+    # Get bin centers from the actual intervals in the data
+    df_binned['binned_ws'] = df_binned['ws_bins'].apply(lambda x: (x.left + x.right) / 2)
+
+    #Calculate the uncertainties and store them as columns in the dataframe
+    df_binned, P_i, V_i, std_P_i, N_i, rho_i = calculate_uncertainties(df_binned) #store the columns of Power, Wind etc as variables for clarity in CP calculation
+
+    #Calculate CP
+    df_binned['Cp'] = P_i * 1000 / (0.5 * rho_i * A * V_i**3)
+
+    # Reorder columns for readability
+    columns = ['binned_ws', 'mean_ws', 'mean_power','mean_rho', 'mean_Temp_C', 'mean_pressure','mean_rel_humidity', 'std_power', 'count', 'Cp', 's_i', 'u_i', 'u_c']
+    df_binned = df_binned[columns]
+    
+    return df_binned
+
+def print_uncertainties_and_sensitivity_factors():
+    print(f'Cat B power uncertainty: {u_P_i}')
+    print(f'Cat B wind speed uncertainty: {u_V_i}')
+    print(f'Cat B temperature uncertainty: {u_T_i}')
+    print(f'Cat B pressure uncertainty: {u_B_i}')
+    print(f'Cat B humidity uncertainty: {u_RH_i}')
+
+    print(f'Cat B power sensitivity factor: {sens_factor_P_i}')
+    print(f'Cat B wind speed sensitivity factor: {sens_factor_V_i}')
+    print(f'Cat B temperature sensitivity factor: {sens_factor_T_i}')
+    print(f'Cat B pressure sensitivity factor: {sens_factor_B_i}')
+    print(f'Cat B humidity sensitivity factor: {sens_factor_RH_i}')
 
 def sensitivity_wind_speed(P_i, P_im1, V_i, V_im1):
     """Calculate sensitivity factor for wind speed."""
     return abs(P_i - P_im1) / abs(V_i - V_im1)
 
-def sensitivity_pressure(cV_i, V_i):
-    """Calculate sensitivity factor for air pressure."""
-    return cV_i * V_i / (3 * 1013)
-
-def sensitivity_temperature(cV_i, V_i):
+def sensitivity_temperature(V_i, c_V_i):
     """Calculate sensitivity factor for air temperature."""
-    return cV_i * V_i / (3 * 288.15)
+    return c_V_i * V_i / (3 * 288.15)
 
-def sensitivity_relative_humidity(cV_i, V_i):
+def sensitivity_pressure(V_i, c_V_i):
+    """Calculate sensitivity factor for air pressure."""
+    return c_V_i * V_i / (3 * 1013)
+
+def sensitivity_relative_humidity(V_i, c_V_i):
     """Calculate sensitivity factor for relative humidity."""
-    return cV_i * V_i * 0.0018
+    return c_V_i * V_i * 0.0018
 
 def uncertainty_power(P_i):
     """Calculate Category B uncertainty in electric power."""
-    sensitivity_factor = 1
+    sens_factor_power = 1
+    sensitivity_factor = np.full_like(P_i, sens_factor_power)
     u_Pi =  np.sqrt((0.002 * P_i) ** 2 + 3.7**2 + 0.3**2)
     return u_Pi, sensitivity_factor
 
-def uncertainty_wind_speed(V_i):
+def uncertainty_wind_speed_old(V_i, P_i):
     """Calculate Category B uncertainty in wind speed."""
+    N = len(V_i)
+    
+    # Calculate wind speed uncertainty
     u_Vi = np.sqrt(0.025**2 + (0.038 + 0.0038 * V_i) ** 2 +
-     (0.01 * V_i) ** 2 + (0.02 * V_i) ** 2 + (0.001 * V_i) ** 2)
-    sensitivity_factor = sensitivity_wind_speed(P_i, P_im1, V_i, V_im1)
-    return u_Vi, sensitivity_factor
+                   (0.01 * V_i) ** 2 + (0.02 * V_i) ** 2 + (0.001 * V_i) ** 2)
+
+    # Initialize sensitivity factor array
+    c_V_i = np.empty(N-1)  
+
+    # Compute sensitivity factors
+    for i in range(1, N):
+        c_V_i[i-1] = sensitivity_wind_speed(P_i[i], P_i[i-1], V_i[i], V_i[i-1])
+
+    # Optionally pad `c_V_i` to match `u_Vi` dimensions
+    c_V_i = np.insert(c_V_i, 0, c_V_i[0])  # Duplicates first value
+
+    return u_Vi, c_V_i
+
+def uncertainty_wind_speed(V_i, P_i):
+    """Calculate Category B uncertainty in wind speed (vectorized)."""
+    
+    u_Vi = np.sqrt(0.025**2 + (0.038 + 0.0038 * V_i) ** 2 +
+                   (0.01 * V_i) ** 2 + (0.02 * V_i) ** 2 + (0.001 * V_i) ** 2)
+
+    # Compute sensitivity factors without a loop
+    c_V_i = np.abs(np.diff(P_i)) / np.abs(np.diff(V_i))
+
+    # Pad `c_V_i` to match `u_Vi` length
+    c_V_i = np.insert(c_V_i, 0, c_V_i[0])
+
+    return u_Vi, c_V_i
 
 def uncertainty_temperature():
     """Category B uncertainty in air temperature (constant value)."""
@@ -745,7 +822,157 @@ def uncertainty_pressure():
     return u_Bi, sensitivity_factor
 
 def uncertainty_relative_humidity():
+
     """Category B uncertainty in relative humidity (constant value)."""
     u_RHi = 0.63  # in %RH
     sensitivity_factor = sensitivity_relative_humidity(cV_i, V_i)
     return u_RHi, sensitivity_factor
+
+def calculate_uncertainties(df):
+
+    df_binned = df.copy()
+    #extract columns for easier uncertainty coding:
+    P_i = df_binned['mean_power']
+    V_i = df_binned['mean_ws']
+    std_P_i = df_binned['std_power']
+    N_i = df_binned['count']
+    rho_i = df_binned['mean_rho']
+
+    #Uncertainty constants
+    uT = 0.6 #Kelvin
+    uB = 2.0 #hPa
+    uRH = 0.63/100 #RH
+    
+    # Calculate category A uncertainty (si)
+    df_binned['s_i'] =  std_P_i/ np.sqrt(N_i)
+    s_i = df_binned['s_i']
+    # print(f'Category A uncertainty: {s_i}') #list of 35 uncertainties (one for each bin)
+    
+    # Calculate category B uncertainty (ui)
+    u_P_i, sens_factor_P_i = uncertainty_power(P_i) #uncertainty in power
+    u_V_i, sens_factor_V_i = uncertainty_wind_speed(V_i,P_i)  #uncertainty in wind speed
+    u_T_i, sens_factor_T_i = np.full_like(V_i, uT), sensitivity_temperature(V_i, sens_factor_V_i) #uncertainty in temperature
+    u_B_i, sens_factor_B_i = np.full_like(V_i, uB), sensitivity_pressure(V_i, sens_factor_V_i) #uncertainty in pressure
+    u_RH_i, sens_factor_RH_i = np.full_like(V_i, uRH), sensitivity_relative_humidity(V_i, sens_factor_V_i)  #uncertainty in humidity
+
+    #print_uncertainties_and_sensitivity_factors()
+    
+    #calculate the combined category b uncertainty
+    u_i = np.sqrt(sum(x**2 for x in [u_P_i, u_V_i, u_T_i, u_B_i, u_RH_i]))
+    # print(f'Category B uncertainty: {u_i}')
+
+    df_binned['u_i'] = u_i
+    
+    # # Calculate combined uncertainty (uci)
+    u_c = np.sqrt(u_i**2+s_i**2)
+    df_binned['u_c'] = u_c
+    # print(f'Combined uncertainty: {u_c}')
+
+    return df_binned, P_i, V_i, std_P_i, N_i, rho_i
+
+def plot_errorbar(df_binned,ws,power,uncertainty, label,title, xlabel, ylabel,showplot = False):
+    """_summary_
+    plot power curve with uncertainties
+
+    Args:
+
+        df_binned (Dataframe): binned dataframe with power and wind speed 
+        ws (Str)): column name for wind speed
+        power (Str): column name for power
+        title (Str): title of the plot
+    """
+    if showplot:
+        plt.figure(figsize=(10, 6))
+        plt.errorbar(df_binned[ws], df_binned[power], 
+                    yerr=df_binned[uncertainty], fmt='o-', capsize=5,
+                    label=label)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.title(title)
+        plt.grid(True)
+        plt.legend()
+        plt.savefig(f'Pictures/{title}.png')
+        plt.show()
+
+def Rayleigh_CDF(ws):
+    """
+    Computes the cumulative distribution function (CDF) of the Rayleigh wind speed distribution.
+
+    Parameters:
+    ws (float or array-like): Wind speed(s) for which the CDF is computed.
+
+    Returns:
+    np.ndarray: The Rayleigh CDF values for the given wind speed(s).
+    """
+    V_ave = np.arange(4, 12)  # Rayleigh mean wind speeds from 4 to 11 m/s
+
+    return 1 - np.exp(-np.pi / 4 * (ws / V_ave) ** 2)
+
+def calculate_AEP(df_binned, Nh=8760):
+    """
+    Calculates the Annual Energy Production (AEP) using a binned wind speed distribution.
+
+    Parameters:
+    df_binned (pd.DataFrame): Dataframe containing binned wind speed (`mean_ws`) and power (`mean_power`).
+    Nh (int, optional): Number of hours in a year (default is 8760).
+
+    Returns:
+    float: Estimated Annual Energy Production (AEP).
+    """
+    # Extract wind speed and power bins
+    Vi = df_binned['mean_ws']  # Normalized and averaged wind speed in bin i
+    Pi = df_binned['mean_power']  # Normalized and averaged power output in bin i
+    N = len(df_binned)  # Number of bins
+    s_i = df_binned['s_i']
+    u_i = df_binned['u_i']
+
+    sum_AEP = 0  # Initialize summation for AEP integral
+    sum_uncertainty_AEP = 0 # Initialize summation for AEP uncertainty integral
+
+    # Compute AEP using numerical integration over wind speed bins
+    for i in range(1, N):  # Start from 1 to avoid index errors with i-1
+        delta_F = Rayleigh_CDF(Vi.iloc[i]) - Rayleigh_CDF(Vi.iloc[i-1])  # Change in Rayleigh CDF
+        avg_P = (Pi.iloc[i] + Pi.iloc[i-1]) / 2  # Average power output between bins
+        sum_AEP += delta_F * avg_P  # Contribution to total AEP
+
+        #uncertainty AEP
+        sum_uncertainty_AEP += delta_F*s_i.iloc[i]+(delta_F*u_i.iloc[i])**2
+
+    sum_AEP /= 1000 #convert to kW
+    AEP = sum_AEP * Nh  # Scale by total hours in a year to get kWh
+
+    uncertainty_AEP = Nh*np.sqrt(sum_uncertainty_AEP)/1000 #scale uncertainty to kW like AEP
+
+    return AEP, uncertainty_AEP
+
+def uncertainty_AEP():
+    for i in range(1, N):  # Start from 1 to avoid index errors with i-1
+        delta_F = Rayleigh_CDF(Vi.iloc[i]) - Rayleigh_CDF(Vi.iloc[i-1])  # Change in Rayleigh CDF
+def print_power_curve_stats(df_binned):
+    """Print power curve statistics table with selected columns.
+    
+    Parameters:
+    -----------
+    df_binned : pandas.DataFrame
+        DataFrame containing binned power curve statistics
+    """
+    # Create bin numbers starting from 1
+    df_selected = pd.DataFrame({
+        'Bin': range(1, len(df_binned) + 1),
+        'Vi': df_binned['mean_ws'],
+        'Pi': df_binned['mean_power'],
+        'Cp': df_binned['Cp'],
+        'si': df_binned['s_i'],
+        'ui': df_binned['u_i'],
+        'uci': df_binned['u_c']
+    })
+    
+    print("\nPower Curve Statistics:")
+    print("=" * 80)
+    print(df_selected.to_string(
+        index=False,
+        float_format=lambda x: '{:8.3f}'.format(x),
+        col_space=10,
+        justify='right'
+    ))
+    print("=" * 80)
