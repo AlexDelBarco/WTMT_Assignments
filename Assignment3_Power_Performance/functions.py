@@ -1,9 +1,10 @@
+#%% Import libraries
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import os
-
+#%% Plotting functions
 def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,height = 100, unit ='Wind Speed (m/s)',plot_bool = False ):
     if plot_bool == True:
         plt.figure(figsize=(50,10))
@@ -131,6 +132,167 @@ def plot_all_measurements(df, plot_bool=False):
         plot_scatter('Mean Relative Humidity',df.index,df['RH_2m'],'Mean relative humidity',
                      label_x='Date',label_y='  Mean relative humidity [%]',plot_bool=True)
 
+def plot_check_vane_filter(df,title,lb):
+    x_vals = [df.index.min(),df.index.max()]
+    lower_y_vals = [lb,lb]
+    
+    plt.figure(figsize=(50,10))
+    plt.scatter(df.index,df['Vane100m_Mean'], label = 'Mean', s = 5)
+    plt.scatter(df.index,df['Vane100m_Min'], label = 'Min', s = 5)
+    plt.scatter(df.index,df['Vane100m_Max'], label = 'Max', s = 5)
+    plt.plot(x_vals, lower_y_vals, label = 'ws filter lower bound', linewidth = 2)
+    plt.xlabel('Time [s]', fontsize=20)
+    plt.ylabel('Direction [°]', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.title(f'Vane filter check {title} filtering', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/lidar_ws_filter.png')
+    plt.show()
+
+def plot_check_ws_filter(df,plots,title,lb,ub,measurement):
+    x_vals = [df.index.min(),df.index.max()]
+    lower_y_vals = [lb,lb]
+    upper_y_vals = [ub,ub]
+    plot1, plot2, plot3 = plots
+
+
+
+    plt.figure(figsize=(50,10))
+    plt.scatter(df.index,df[plot1], label = 'Mean', s = 5)
+    plt.scatter(df.index,df[plot2], label = 'Min', s = 5)
+    plt.scatter(df.index,df[plot3], label = 'Max', s = 5)
+    plt.plot(x_vals, lower_y_vals, label = 'ws filter lower bound', linewidth = 2)
+    plt.plot(x_vals, upper_y_vals, label = 'ws filter upper bound', linewidth = 2)
+    plt.xlabel('Time [s]', fontsize=20)
+    plt.ylabel('Wind Speed (m/s)', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.title(f'Speed filter check means {title} {measurement} filtering', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/{measurement}_ws_filter.png')
+    plt.show()
+
+def plot_directional_check(df,title,highest_bound,lowest_bound, meas):
+    direction_filter_lower_bound_list = [lowest_bound,lowest_bound]
+    direction_filter_upper_bound_list = [highest_bound,highest_bound]
+    y_values_list = [0,30]
+
+
+    plt.figure(figsize=(50,10))
+    plt.scatter(df[meas],df['Cup100m_Mean'], label = 'mean', s = 5)
+    plt.axvline(x=lowest_bound, color='r', linestyle='--', label='direction filter lower bound')
+    plt.axvline(x=highest_bound, color='g', linestyle='--', label='direction filter upper bound')
+    #plt.scatter(direction_filter_lower_bound_list, y_values_list, label = 'direction filter', s = 5)
+    #plt.scatter(direction_filter_upper_bound_list, y_values_list, label = 'direction filter', s = 5)
+    plt.xlabel('Wind Direction [°]', fontsize=20)
+    plt.ylabel('Wind Speed (m/s)', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.title(f'Directional filter {meas} {title}', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/direction_filter_{meas}.png')
+    plt.show()
+
+def plot_errorbar(df_binned,ws,power,uncertainty, label,title, xlabel, ylabel,showplot = False):
+    """_summary_
+    plot power curve with uncertainties
+
+    Args:
+
+        df_binned (Dataframe): binned dataframe with power and wind speed 
+        ws (Str)): column name for wind speed
+        power (Str): column name for power
+        title (Str): title of the plot
+    """
+    if showplot:
+        plt.figure(figsize=(10, 6))
+        plt.errorbar(df_binned[ws], df_binned[power], 
+                    yerr=df_binned[uncertainty], fmt='o-', capsize=5,
+                    label=label)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.title(title)
+        plt.grid(True)
+        plt.legend()
+        plt.savefig(f'Pictures/{title}.png')
+        plt.show()
+
+#%% Print functions
+def print_power_curve_stats(df_binned):
+    """Print power curve statistics table with selected columns.
+    
+    Parameters:
+    -----------
+    df_binned : pandas.DataFrame
+        DataFrame containing binned power curve statistics
+    """
+    # Create bin numbers starting from 1
+    df_selected = pd.DataFrame({
+        'Bin': range(1, len(df_binned) + 1),
+        'Vi': df_binned['mean_ws'],
+        'Pi': df_binned['mean_power'],
+        'Cp': df_binned['Cp'],
+        'si': df_binned['s_i'],
+        'ui': df_binned['u_i'],
+        'uci': df_binned['u_c']
+    })
+    
+    print("\nPower Curve Statistics:")
+    print("=" * 80)
+    print(df_selected.to_string(
+        index=False,
+        float_format=lambda x: '{:8.3f}'.format(x),
+        col_space=10,
+        justify='right'
+    ))
+    print("=" * 80)
+
+def print_AEP_stats(df_AEP):
+    """Print power curve statistics table with selected columns.
+    
+    Parameters:
+    -----------
+    df_binned : pandas.DataFrame
+        DataFrame containing binned power curve statistics
+    """
+    # Create bin numbers starting from 1
+    # AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated 
+    df_selected = pd.DataFrame({
+        'Vave': df_AEP['Vave'],
+        'AEP': df_AEP['AEP'],
+        'uAEP_abs': df_AEP['uAEP_abs'],
+        'uAEP_rel': df_AEP['uAEP_rel'],
+        'AEPextrapolated': df_AEP['AEPextrapolated']
+      })
+    
+    print("\AEP Statistics:")
+    print("=" * 80)
+    print(df_selected.to_string(
+        index=False,
+        float_format=lambda x: '{:8.3f}'.format(x),
+        col_space=10,
+        justify='right'
+    ))
+    print("=" * 80)
+
+def print_uncertainties_and_sensitivity_factors():
+    print(f'Cat B power uncertainty: {u_P_i}')
+    print(f'Cat B wind speed uncertainty: {u_V_i}')
+    print(f'Cat B temperature uncertainty: {u_T_i}')
+    print(f'Cat B pressure uncertainty: {u_B_i}')
+    print(f'Cat B humidity uncertainty: {u_RH_i}')
+
+    print(f'Cat B power sensitivity factor: {sens_factor_P_i}')
+    print(f'Cat B wind speed sensitivity factor: {sens_factor_V_i}')
+    print(f'Cat B temperature sensitivity factor: {sens_factor_T_i}')
+    print(f'Cat B pressure sensitivity factor: {sens_factor_B_i}')
+    print(f'Cat B humidity sensitivity factor: {sens_factor_RH_i}')
+
+#%% Data cleaning functions
 def convert_repeating_to_nan(df, columns, threshold_hours=5):
     """
     Replaces repeating values in specified columns of a DataFrame with NaN after a certain threshold of repetitions.
@@ -311,50 +473,6 @@ def filter_vane(df, columns=None, lower_bound=1.5):
     
     return df_cleaned
 
-def plot_check_vane_filter(df,title,lb):
-    x_vals = [df.index.min(),df.index.max()]
-    lower_y_vals = [lb,lb]
-    
-    plt.figure(figsize=(50,10))
-    plt.scatter(df.index,df['Vane100m_Mean'], label = 'Mean', s = 5)
-    plt.scatter(df.index,df['Vane100m_Min'], label = 'Min', s = 5)
-    plt.scatter(df.index,df['Vane100m_Max'], label = 'Max', s = 5)
-    plt.plot(x_vals, lower_y_vals, label = 'ws filter lower bound', linewidth = 2)
-    plt.xlabel('Time [s]', fontsize=20)
-    plt.ylabel('Direction [°]', fontsize=20)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
-    plt.title(f'Vane filter check {title} filtering', fontsize=25)
-    plt.legend(fontsize=20)
-    plt.savefig(f'Pictures/lidar_ws_filter.png')
-    plt.show()
-
-
-def plot_check_ws_filter(df,plots,title,lb,ub,measurement):
-    x_vals = [df.index.min(),df.index.max()]
-    lower_y_vals = [lb,lb]
-    upper_y_vals = [ub,ub]
-    plot1, plot2, plot3 = plots
-
-
-
-    plt.figure(figsize=(50,10))
-    plt.scatter(df.index,df[plot1], label = 'Mean', s = 5)
-    plt.scatter(df.index,df[plot2], label = 'Min', s = 5)
-    plt.scatter(df.index,df[plot3], label = 'Max', s = 5)
-    plt.plot(x_vals, lower_y_vals, label = 'ws filter lower bound', linewidth = 2)
-    plt.plot(x_vals, upper_y_vals, label = 'ws filter upper bound', linewidth = 2)
-    plt.xlabel('Time [s]', fontsize=20)
-    plt.ylabel('Wind Speed (m/s)', fontsize=20)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
-    plt.title(f'Speed filter check means {title} {measurement} filtering', fontsize=25)
-    plt.legend(fontsize=20)
-    plt.savefig(f'Pictures/{measurement}_ws_filter.png')
-    plt.show()
-
 
 def replace_outliers_with_nan(df, columns=None, factor=3,  abs_threshold=None):
 
@@ -406,6 +524,7 @@ def replace_outliers_with_nan(df, columns=None, factor=3,  abs_threshold=None):
 
 
 def filter_direction(df, highest_bound, lowest_bound, meas):
+
     """
     Filter the dataframe to only include rows where the wind direction is OUTSIDE 
     the turbine wake sector (346.47° - 13.24°).
@@ -429,6 +548,7 @@ def filter_direction(df, highest_bound, lowest_bound, meas):
     print(f"Direction range in filtered data: {remaining_directions.min():.2f}° - {remaining_directions.max():.2f}°")
     
     return filtered_df
+
 def exclude_house_sector(df):
     """
     Filter out data between 125° and 146.6° (house sector).
@@ -447,28 +567,60 @@ def exclude_house_sector(df):
     
     return filtered_df
 
-def plot_directional_check(df,title,highest_bound,lowest_bound, meas):
-    direction_filter_lower_bound_list = [lowest_bound,lowest_bound]
-    direction_filter_upper_bound_list = [highest_bound,highest_bound]
-    y_values_list = [0,30]
+def filter_ice_on_cups(df, ice_threshold=2):
 
 
-    plt.figure(figsize=(50,10))
-    plt.scatter(df[meas],df['Cup100m_Mean'], label = 'mean', s = 5)
-    plt.axvline(x=lowest_bound, color='r', linestyle='--', label='direction filter lower bound')
-    plt.axvline(x=highest_bound, color='g', linestyle='--', label='direction filter upper bound')
-    #plt.scatter(direction_filter_lower_bound_list, y_values_list, label = 'direction filter', s = 5)
-    #plt.scatter(direction_filter_upper_bound_list, y_values_list, label = 'direction filter', s = 5)
-    plt.xlabel('Wind Direction [°]', fontsize=20)
-    plt.ylabel('Wind Speed (m/s)', fontsize=20)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    #plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
-    plt.title(f'Directional filter {meas} {title}', fontsize=25)
-    plt.legend(fontsize=20)
-    plt.savefig(f'Pictures/direction_filter_{meas}.png')
-    plt.show()
+    """
+    Filter the wind speed from the cup anemometer to exclude the possibility of ice on the cups.
+    Ice typically forms when temperature is at or below 4°C (default threshold).
+    
+    Parameters:
+    df (pd.DataFrame): Input DataFrame with wind and temperature measurements
+    ice_threshold (float): Temperature threshold for ice formation in °C
+    
+    Returns:
+    pd.DataFrame: DataFrame with ice-filtered data
+    tuple: (filtered DataFrame, number of points removed)
+    """
+    # Create a copy to avoid modifying the original
+    df_filtered = df.copy()
+    
+    cup_columns = ['Cup100m_Mean', 'Cup100m_Min', 'Cup100m_Max', 'Cup100m_Stdv',
+                   'Cup114m_Mean', 'Cup114m_Min', 'Cup114m_Max', 'Cup114m_Stdv',
+                   'Cup116m_Mean', 'Cup116m_Min', 'Cup116m_Max', 'Cup116m_Stdv']
+    
+    # Create mask for potential icing conditions
+    ice_mask = df_filtered['Temp100m_Mean'] <= ice_threshold
+    
+    # Count original non-NaN values
+    original_count = df_filtered[cup_columns].count().sum()
+    
+    # Set cup measurements to NaN where temperature indicates possible icing
+    for col in cup_columns:
+        df_filtered.loc[ice_mask, col] = np.nan
+    
+    # Count remaining non-NaN values
+    remaining_count = df_filtered[cup_columns].count().sum()
+    points_removed = original_count - remaining_count
+    
+    print(f"Ice filtering results:")
+    print(f"Temperature threshold: {ice_threshold}°C")
+    print(f"Total points removed: {points_removed}")
+    print(f"Percentage of data removed: {(points_removed/original_count)*100:.2f}%")
+    
+    return df_filtered, points_removed
 
+def remove_outliers_mask(lower_bound,upperbound,df,column,parameter,unit,show_plot = False):
+
+    plot_scatter(f'{parameter} Before Cleaning', df.index, df[column], 
+                f'{parameter} [{unit}]', label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
+    mask = (df[column] < lower_bound) | (df[column] > upperbound)
+    df[column] = df[column].mask(mask).copy() #replace with NaN
+    plot_scatter(f'{parameter} After Cleaning', df.index, df[column], 
+                f'{parameter} [{unit}]', label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
+    return df
+
+#%% Analysis functions
 def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Comparison", forced=False):
     """
     Perform regression analysis between cup and lidar measurements
@@ -516,51 +668,6 @@ def analyze_wind_speeds(df, availability_threshold=None, title="Wind Speed Compa
     plt.grid(True)
     plt.savefig(f'Pictures/{title}_lidar_cup_regression_{availability_threshold}.png')
     plt.show()
-
-
-def filter_ice_on_cups(df, ice_threshold=2):
-
-
-    """
-    Filter the wind speed from the cup anemometer to exclude the possibility of ice on the cups.
-    Ice typically forms when temperature is at or below 4°C (default threshold).
-    
-    Parameters:
-    df (pd.DataFrame): Input DataFrame with wind and temperature measurements
-    ice_threshold (float): Temperature threshold for ice formation in °C
-    
-    Returns:
-    pd.DataFrame: DataFrame with ice-filtered data
-    tuple: (filtered DataFrame, number of points removed)
-    """
-    # Create a copy to avoid modifying the original
-    df_filtered = df.copy()
-    
-    cup_columns = ['Cup100m_Mean', 'Cup100m_Min', 'Cup100m_Max', 'Cup100m_Stdv',
-                   'Cup114m_Mean', 'Cup114m_Min', 'Cup114m_Max', 'Cup114m_Stdv',
-                   'Cup116m_Mean', 'Cup116m_Min', 'Cup116m_Max', 'Cup116m_Stdv']
-    
-    # Create mask for potential icing conditions
-    ice_mask = df_filtered['Temp100m_Mean'] <= ice_threshold
-    
-    # Count original non-NaN values
-    original_count = df_filtered[cup_columns].count().sum()
-    
-    # Set cup measurements to NaN where temperature indicates possible icing
-    for col in cup_columns:
-        df_filtered.loc[ice_mask, col] = np.nan
-    
-    # Count remaining non-NaN values
-    remaining_count = df_filtered[cup_columns].count().sum()
-    points_removed = original_count - remaining_count
-    
-    print(f"Ice filtering results:")
-    print(f"Temperature threshold: {ice_threshold}°C")
-    print(f"Total points removed: {points_removed}")
-    print(f"Percentage of data removed: {(points_removed/original_count)*100:.2f}%")
-    
-    return df_filtered, points_removed
-
 
 def analyze_wind_speeds_2(df, availability_threshold=None, title="Wind Speed Comparison", forced=False):
     """
@@ -613,16 +720,7 @@ def analyze_wind_speeds_2(df, availability_threshold=None, title="Wind Speed Com
     plt.savefig(f'Pictures/{title}_lidar_cup_regression_2_{availability_threshold}.png')
     plt.show()
 
-def remove_outliers_mask(lower_bound,upperbound,df,column,parameter,unit,show_plot = False):
-
-    plot_scatter(f'{parameter} Before Cleaning', df.index, df[column], 
-                f'{parameter} [{unit}]', label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
-    mask = (df[column] < lower_bound) | (df[column] > upperbound)
-    df[column] = df[column].mask(mask).copy() #replace with NaN
-    plot_scatter(f'{parameter} After Cleaning', df.index, df[column], 
-                f'{parameter} [{unit}]', label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
-    return df
-
+#%% Physical calculation functions
 def vapor_pressure(T_10min):
     """
     Calculate water vapor pressure using an empirical formula
@@ -665,6 +763,7 @@ def calculate_rho(df,pressure, temperature, humidity_rel, vapor_pressure,R0 = 28
     rho = 1/temperature*(pressure/R0-humidity_rel*vapor_pressure*(1/R0-1/R_W))
     return rho
 
+#%% Normalization functions
 def normalize_power_stall_regulated(df,P_avg,rho_avg,rho_0 = 1.225):
     """_summary_
 
@@ -692,6 +791,7 @@ def normalize_wind_active_controlled(df,V_avg,rho_avg,rho_0 = 1.225):
     """
     Vn = df[V_avg]*(df[rho_avg]/rho_0)**(1/3)
     return Vn
+
 
 def calculate_power_curve_bins(df, ws_bins, A):
     """
@@ -739,19 +839,7 @@ def calculate_power_curve_bins(df, ws_bins, A):
     
     return df_binned
 
-def print_uncertainties_and_sensitivity_factors():
-    print(f'Cat B power uncertainty: {u_P_i}')
-    print(f'Cat B wind speed uncertainty: {u_V_i}')
-    print(f'Cat B temperature uncertainty: {u_T_i}')
-    print(f'Cat B pressure uncertainty: {u_B_i}')
-    print(f'Cat B humidity uncertainty: {u_RH_i}')
-
-    print(f'Cat B power sensitivity factor: {sens_factor_P_i}')
-    print(f'Cat B wind speed sensitivity factor: {sens_factor_V_i}')
-    print(f'Cat B temperature sensitivity factor: {sens_factor_T_i}')
-    print(f'Cat B pressure sensitivity factor: {sens_factor_B_i}')
-    print(f'Cat B humidity sensitivity factor: {sens_factor_RH_i}')
-
+#%% Sensitivity and uncertainty functions
 def sensitivity_wind_speed(P_i, P_im1, V_i, V_im1):
     """Calculate sensitivity factor for wind speed."""
     return abs(P_i - P_im1) / abs(V_i - V_im1)
@@ -870,30 +958,7 @@ def calculate_uncertainties(df):
 
     return df_binned, P_i, V_i, std_P_i, N_i, rho_i
 
-def plot_errorbar(df_binned,ws,power,uncertainty, label,title, xlabel, ylabel,showplot = False):
-    """_summary_
-    plot power curve with uncertainties
-
-    Args:
-
-        df_binned (Dataframe): binned dataframe with power and wind speed 
-        ws (Str)): column name for wind speed
-        power (Str): column name for power
-        title (Str): title of the plot
-    """
-    if showplot:
-        plt.figure(figsize=(10, 6))
-        plt.errorbar(df_binned[ws], df_binned[power], 
-                    yerr=df_binned[uncertainty], fmt='o-', capsize=5,
-                    label=label)
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        plt.title(title)
-        plt.grid(True)
-        plt.legend()
-        plt.savefig(f'Pictures/{title}.png')
-        plt.show()
-
+#%% AEP functions
 def Rayleigh_CDF(ws):
     """
     Computes the cumulative distribution function (CDF) of the Rayleigh wind speed distribution.
@@ -945,34 +1010,3 @@ def calculate_AEP(df_binned, Nh=8760):
 
     return AEP, uncertainty_AEP
 
-def uncertainty_AEP():
-    for i in range(1, N):  # Start from 1 to avoid index errors with i-1
-        delta_F = Rayleigh_CDF(Vi.iloc[i]) - Rayleigh_CDF(Vi.iloc[i-1])  # Change in Rayleigh CDF
-def print_power_curve_stats(df_binned):
-    """Print power curve statistics table with selected columns.
-    
-    Parameters:
-    -----------
-    df_binned : pandas.DataFrame
-        DataFrame containing binned power curve statistics
-    """
-    # Create bin numbers starting from 1
-    df_selected = pd.DataFrame({
-        'Bin': range(1, len(df_binned) + 1),
-        'Vi': df_binned['mean_ws'],
-        'Pi': df_binned['mean_power'],
-        'Cp': df_binned['Cp'],
-        'si': df_binned['s_i'],
-        'ui': df_binned['u_i'],
-        'uci': df_binned['u_c']
-    })
-    
-    print("\nPower Curve Statistics:")
-    print("=" * 80)
-    print(df_selected.to_string(
-        index=False,
-        float_format=lambda x: '{:8.3f}'.format(x),
-        col_space=10,
-        justify='right'
-    ))
-    print("=" * 80)

@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import functions as fn
+from pathlib import Path
 #import functions as fn
 #from sklearn.linear_model import LinearRegression
 #%% ## Import Data 
 #10 minute averages data
-file_path = os.path.join(os.path.dirname(__file__), 'windData.csv')
-
+#file_path = os.path.join(os.path.dirname(__file__), 'windData.csv')
+file_path = Path('./windData.csv')
 # Read CSV with proper datetime parsing
 df_original = pd.read_csv(file_path,na_values=r'\N')
 # Convert date_time to datetime and set as index
@@ -53,10 +54,10 @@ df = fn.remove_outliers_mask(-10,30,df,'AirAbs_70m','Temperature','C',show_plot 
 #remove outliers for humidity
 df = fn.remove_outliers_mask(20,100,df,'RH_2m','Humidity','%',show_plot = False)
 #%% Wind turbine characteristics
-P_rated = 850 #kW
+P_RATED = 850 #kW
 D = 52 #m
-hub_height = 44 #m
-ws_cutout = 25 #m/s
+HUB_HEIGHT = 44 #m
+WS_CUTOUT = 25 #m/s
 A = np.pi * (D/2)**2 #m^2
 
 #approximations:
@@ -66,7 +67,7 @@ A = np.pi * (D/2)**2 #m^2
 #Other constants
 R0 = 287.05 #J/kgK
 R_W = 461.5 #J/kgK
-rho_0 = 1.225 #kg/m^3 #Reference air density
+RHO_0 = 1.225 #kg/m^3 #Reference air density
 Nh = 365*24 #hours in a year
 #%% Q3.2: Determine the filtered and normalized power curve based on data recorded during January - July 2023. 
 # A) Perform data normalization and report the mean air density at the site. 
@@ -101,8 +102,6 @@ df['norm_ws'] = fn.normalize_wind_active_controlled(df,'Wsp_44m','rho')
 fn.plot_scatter('Normalized Wind Speed',df.index,df['norm_ws'],'Normalized Wind Speed',label_x='Wind Speed [m/s]',label_y='Normalized Wind Speed',
                 plot_bool=False)
 
-
-
 #%% 3.2 B) Report the bin-averaged values of mean wind speed, mean power, standard 
 #deviation of power, Cp-coefficient, number of observations, as well as the category 
 #A, s_i, category B, u_i, and combined, u_ci, uncertainties for each bin i in tables and plots.
@@ -118,9 +117,7 @@ df_binned = fn.calculate_power_curve_bins(df, ws_bins, D)
 # Save results to CSV
 df_binned.to_csv('binned_statistics.csv', float_format='%.3f')
 
-
 #Scattered plot of power Pi statistics as function of hub height wind speed Vi (What does this sentence mean?)
-
 
 #Bin-averaged power, Pi, as function of bin-averaged mean wind speed Vi including combined uncertainty as ”errorbar”
 fn.plot_errorbar(df_binned,'binned_ws','mean_power', 'u_c', 'Power curve with combined uncertainty',
@@ -131,15 +128,10 @@ fn.plot_scatter('Mean Wind Speed vs Cp',df_binned['mean_ws'],df_binned['Cp'],
 'Mean Wind Speed vs Cp',label_x='Mean Wind Speed [m/s]',label_y='Cp [-]',
                 plot_bool=False,draw_line = True)
 
-
 # table: bin no-i, Vi, Pi, Cp, si, ui & uci
-
 
 #Print power curve stats
 fn.print_power_curve_stats(df_binned)
-
-
-
 
 #%% Q3.3: Calculate and report the results of AEP-measured and AEP-extrapolated using 
 #Rayleigh wind speed distributions with average annual wind speed at hub height 𝑉𝑎𝑣𝑒=4, 5, 
@@ -165,7 +157,6 @@ label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
 
 fn.plot_errorbar(df_AEP,'V_ave', 'AEP', 'uncertainty_AEP',
  'AEP w. Uncertainty','Annual Energy Production (AEP) at Rayleigh WS with Uncertainty',
-  'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',showplot = True)
+  'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',showplot = False)
 
-# AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated 
-
+# AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated
