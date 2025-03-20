@@ -251,7 +251,7 @@ def print_power_curve_stats(df_binned):
     ))
     print("=" * 80)
 
-def print_AEP_stats(df_AEP):
+def print_AEP_stats_old(df_AEP):
     """Print power curve statistics table with selected columns.
     
     Parameters:
@@ -269,7 +269,7 @@ def print_AEP_stats(df_AEP):
         'AEPextrapolated': df_AEP['AEPextrapolated']
       })
     
-    print("\AEP Statistics:")
+    print("AEP Statistics:")
     print("=" * 80)
     print(df_selected.to_string(
         index=False,
@@ -278,6 +278,19 @@ def print_AEP_stats(df_AEP):
         justify='right'
     ))
     print("=" * 80)
+
+def print_AEP_stats(df_AEP):
+    """Print AEP statistics table with selected columns."""
+    
+    print("\nAEP Statistics:")
+    print("=" * 100)
+    print(df_AEP.to_string(
+        index=False,
+        float_format=lambda x: '{:8.3f}'.format(x) if isinstance(x, (int, float)) else x,
+        col_space=12,
+        justify='right'
+    ))
+    print("=" * 100)
 
 def print_uncertainties_and_sensitivity_factors():
     print(f'Cat B power uncertainty: {u_P_i}')
@@ -973,7 +986,7 @@ def Rayleigh_CDF(ws):
 
     return 1 - np.exp(-np.pi / 4 * (ws / V_ave) ** 2)
 
-def calculate_AEP(df_binned, Nh=8760):
+def calculate_AEP(df_binned, v_ave, Nh=8760):
     """
     Calculates the Annual Energy Production (AEP) using a binned wind speed distribution.
 
@@ -985,9 +998,9 @@ def calculate_AEP(df_binned, Nh=8760):
     float: Estimated Annual Energy Production (AEP).
     """
     # Extract wind speed and power bins
-    Vi = df_binned['mean_ws']  # Normalized and averaged wind speed in bin i
-    Pi = df_binned['mean_power']  # Normalized and averaged power output in bin i
-    N = len(df_binned)  # Number of bins
+    Vi = df_binned['mean_ws']
+    Pi = df_binned['mean_power']
+    N = len(df_binned)
     s_i = df_binned['s_i']
     u_i = df_binned['u_i']
 
@@ -995,18 +1008,34 @@ def calculate_AEP(df_binned, Nh=8760):
     sum_uncertainty_AEP = 0 # Initialize summation for AEP uncertainty integral
 
     # Compute AEP using numerical integration over wind speed bins
-    for i in range(1, N):  # Start from 1 to avoid index errors with i-1
-        delta_F = Rayleigh_CDF(Vi.iloc[i]) - Rayleigh_CDF(Vi.iloc[i-1])  # Change in Rayleigh CDF
-        avg_P = (Pi.iloc[i] + Pi.iloc[i-1]) / 2  # Average power output between bins
-        sum_AEP += delta_F * avg_P  # Contribution to total AEP
-
-        #uncertainty AEP
-        sum_uncertainty_AEP += delta_F*s_i.iloc[i]+(delta_F*u_i.iloc[i])**2
-
-    sum_AEP /= 1000 #convert to kW
+    for i in range(1, N):
+        # Calculate Rayleigh distribution difference for this v_ave
+        delta_F = Rayleigh_CDF_single(Vi.iloc[i], v_ave) - Rayleigh_CDF_single(Vi.iloc[i-1], v_ave)
+        avg_P = (Pi.iloc[i] + Pi.iloc[i-1]) / 2
+        sum_AEP += delta_F * avg_P
+        
+        # Calculate uncertainty contribution
+        uncertainty_term = (delta_F * np.sqrt(s_i.iloc[i]**2 + u_i.iloc[i]**2))**2
+        sum_uncertainty_AEP += uncertainty_term
+    
+    sum_AEP /= 1000  # convert to kW
     AEP = sum_AEP * Nh  # Scale by total hours in a year to get kWh
-
-    uncertainty_AEP = Nh*np.sqrt(sum_uncertainty_AEP)/1000 #scale uncertainty to kW like AEP
-
+    
+    # Calculate final uncertainty
+    uncertainty_AEP = (Nh/1000) * np.sqrt(sum_uncertainty_AEP)
+    
     return AEP, uncertainty_AEP
 
+def Rayleigh_CDF_single(ws, v_ave):
+    """Rayleigh CDF for a single v_ave value"""
+    return 1 - np.exp(-np.pi/4 * (ws/v_ave)**2)
+
+def calculate_extrapolated_AEP(df_binned, v_ave, Nh=8760):
+    """
+    Calculates extrapolated AEP for wind speeds outside the measured range.
+    Uses a theoretical power curve for extrapolation.
+    """
+    # Implementation would depend on your specific extrapolation method
+    # Typically using theoretical power curve or fitting a model
+    # For demonstration, returning a placeholder value
+    return calculate_AEP(df_binned, v_ave)[0] * 1.1  # Example: 10% higher than measured

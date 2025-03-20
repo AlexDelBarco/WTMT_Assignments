@@ -143,20 +143,51 @@ fn.print_power_curve_stats(df_binned)
 V_ave = np.arange(4, 12)  # Rayleigh mean wind speeds from 4 to 11 m/s
 df_AEP = pd.DataFrame()
 df_AEP['V_ave'] = V_ave
-AEP, uncertainty_AEP = fn.calculate_AEP(df_binned)
-df_AEP['AEP'] = AEP
-df_AEP['uncertainty_AEP'] = uncertainty_AEP 
+# AEP, uncertainty_AEP = fn.calculate_AEP(df_binned)
+# df_AEP['AEP'] = AEP
+# df_AEP['uncertainty_AEP'] = uncertainty_AEP
 
-# print(f"Annual Energy Production (AEP): {AEP}")
-fn.plot_scatter('Annual Energy Production (AEP) at Rayleigh WS',V_ave,AEP,'AEP',
-label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
-                plot_bool=False)
+# # print(f"Annual Energy Production (AEP): {AEP}")
+# fn.plot_scatter('Annual Energy Production (AEP) at Rayleigh WS',V_ave,AEP,'AEP',
+# label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
+#                 plot_bool=False)
 
-#print(f'Lenght Uncertainty AEP : {len(uncertainty_AEP)}')    
-#print(f'Lenght  AEP : {len(AEP)}')    
+# #print(f'Lenght Uncertainty AEP : {len(uncertainty_AEP)}')    
+# #print(f'Lenght  AEP : {len(AEP)}')    
 
-fn.plot_errorbar(df_AEP,'V_ave', 'AEP', 'uncertainty_AEP',
- 'AEP w. Uncertainty','Annual Energy Production (AEP) at Rayleigh WS with Uncertainty',
-  'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',showplot = False)
+# fn.plot_errorbar(df_AEP,'V_ave', 'AEP', 'uncertainty_AEP',
+#  'AEP w. Uncertainty','Annual Energy Production (AEP) at Rayleigh WS with Uncertainty',
+#   'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',showplot = False)
 
 # AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated
+
+# Calculate measured AEP for each Vave
+aep_measured = []
+uncertainties_abs = []
+
+for v in V_ave:
+    aep, uncertainty = fn.calculate_AEP(df_binned, v)
+    aep_measured.append(aep)
+    uncertainties_abs.append(uncertainty)
+
+df_AEP['AEP_measured'] = aep_measured
+df_AEP['uAEP_abs'] = uncertainties_abs
+df_AEP['uAEP_rel'] = (df_AEP['uAEP_abs'] / df_AEP['AEP_measured']) * 100
+
+# Calculate extrapolated AEP for wind speeds outside measurement range
+df_AEP['AEP_extrapolated'] = [fn.calculate_extrapolated_AEP(df_binned, v) for v in V_ave]
+
+# Determine completeness labels
+min_ws = df_binned['mean_ws'].min()
+max_ws = df_binned['mean_ws'].max()
+df_AEP['completeness'] = 'incomplete'
+
+# A distribution is complete if 99% of energy is within measured range
+for i, v in enumerate(V_ave):
+    # Calculate wind speed at 99% of Rayleigh CDF for this Vave
+    max_ws_needed = v * np.sqrt(-4/np.pi * np.log(0.01))
+    if max_ws_needed <= max_ws:
+        df_AEP.loc[i, 'completeness'] = 'complete'
+
+# Print the results table
+fn.print_AEP_stats(df_AEP)
