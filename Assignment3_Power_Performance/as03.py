@@ -1,23 +1,22 @@
 # # ASSIGNMENT 2: WIND SPEED MEASUREMENTS
-#%%## Imports
+#%% Imports
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 import os
 import functions as fn
-from pathlib import Path
-#import functions as fn
+#from pathlib import Path
+
 #from sklearn.linear_model import LinearRegression
 #%% ## Import Data 
 #10 minute averages data
-#file_path = os.path.join(os.path.dirname(__file__), 'windData.csv')
-file_path = Path('./windData.csv')
+file_path = os.path.join(os.path.dirname(__file__), 'windData.csv')
+#file_path = Path('./windData.csv')
 # Read CSV with proper datetime parsing
-df_original = pd.read_csv(file_path,na_values=r'\N')
+df_original = pd.read_csv(file_path, na_values=r'\N')
 # Convert date_time to datetime and set as index
 df_original['date_time'] = pd.to_datetime(df_original['date_time'],
-                                           format='%d-%m-%Y %H:%M',
-                                           )
+                                          format='%d-%m-%Y %H:%M')
 df_original.set_index('date_time', inplace=True)
 df = df_original.copy()
 #%% Create Pictures directory if it doesn't exist
@@ -42,17 +41,39 @@ fn.plot_all_measurements(df,plot_bool=False)
 #Pressure: extremely low values
 #Humidity: extremely low values
 
+
 #remove outliers for wind speed
-df = fn.remove_outliers_mask(0,30,df,'Wsp_44m','Wind Speed','m/s',show_plot = False)
-#print(df['Wsp_44m'].max())
+df = fn.remove_outliers_mask(0, 30, df, 'Wsp_44m', parameter = 'Wind Speed', unit = 'm/s', show_plot=False)
+
 #remove outliers for TI
 df = fn.remove_outliers_mask(0.1,100,df,'TI_44m','Turbulence Intensity','%',show_plot = False)
-#remove outliers for pressure
+# #remove outliers for pressure
 df = fn.remove_outliers_mask(900,1100,df,'Press_enc_2m','Pressure','hPa',show_plot = False)
 #remove outliers for temperature
-df = fn.remove_outliers_mask(-10,30,df,'AirAbs_70m','Temperature','C',show_plot = False)
+df = fn.remove_outliers_mask(-15,30,df,'AirAbs_70m','Temperature','C',show_plot = False)
 #remove outliers for humidity
 df = fn.remove_outliers_mask(20,100,df,'RH_2m','Humidity','%',show_plot = False)
+
+
+#remove pitch
+df = fn.remove_outliers_mask(-3,20,df,'Pitch','Pitch Angle','deg',show_plot = False)
+
+#ROT
+df = fn.remove_outliers_mask(14,100,df,'ROT','Rotor Speed','rpm',show_plot = False)
+
+#ActPow
+df = fn.remove_outliers_mask(10,np.inf, df,'ActPow','Active Power','kW',show_plot = False)
+
+# filter for sector
+df = df.mask(
+    ((0 < df["Wdir_41m"]) & (df["Wdir_41m"] < 20)) |
+    ((25.84 < df["Wdir_41m"]) & (df["Wdir_41m"] < 56.16)) |
+    ((58.81 < df["Wdir_41m"]) & (df["Wdir_41m"] < 69.19)) |
+    ((97.76 < df["Wdir_41m"]) & (df["Wdir_41m"] < 119.58)) |
+    ((139.34 < df["Wdir_41m"]) & (df["Wdir_41m"] < 150.66)) |
+    ((186.6 < df["Wdir_41m"]) & (df["Wdir_41m"] < 197.5)) |
+    ((340 < df["Wdir_41m"]) & (df["Wdir_41m"] < 360)))
+#df = fn.remove_outliers_mask()
 #%% Wind turbine characteristics
 P_RATED = 850 #kW
 D = 52 #m
@@ -119,6 +140,7 @@ df_binned.to_csv('binned_statistics.csv', float_format='%.3f')
 
 #Scattered plot of power Pi statistics as function of hub height wind speed Vi (What does this sentence mean?)
 
+
 #Bin-averaged power, Pi, as function of bin-averaged mean wind speed Vi including combined uncertainty as ”errorbar”
 fn.plot_errorbar(df_binned,'binned_ws','mean_power', 'u_c', 'Power curve with combined uncertainty',
 'Measured Power Curve with Uncertainties','Normalized Wind Speed [m/s]', 'Normalized Power [kW]',showplot=False)
@@ -143,14 +165,36 @@ fn.print_power_curve_stats(df_binned)
 V_ave = np.arange(4, 12)  # Rayleigh mean wind speeds from 4 to 11 m/s
 df_AEP = pd.DataFrame()
 df_AEP['V_ave'] = V_ave
+#Create df with extrapolated power curve and wind speeds
+extrapolated_power = df_binned['mean_power']
+last_value = extrapolated_power.iloc[-1]
+extrapolated_ws = np.arange(1.75,25.75,0.5)
+missing_values = len(extrapolated_ws) - len(extrapolated_power)
+for i in range(missing_values):
+    extrapolated_power = np.append(extrapolated_power,last_value)
+
+#Create df with extrapolated power curve and wind speeds
+df_extrapolated = pd.DataFrame()
+df_extrapolated['extrapolated_ws'] = extrapolated_ws
+df_extrapolated['extrapolated_power'] = extrapolated_power
+
+#print(df_extrapolated)
+# 
+#df_binned['extrapolated_power'] = df_binned['mean_power'].where(df_binned['mean_power'] > df_binned['mean_power'].shift(-1),0)
+
 AEP, uAEP_abs = fn.calculate_AEP(df_binned)
 df_AEP['AEP_measured [kWh]'] = AEP
 df_AEP['uAEP_abs [kWh]'] = uAEP_abs 
 df_AEP['uAEP_rel [%]'] = uAEP_abs / AEP*100
+#df_AEP['AEP_extrapolated'] = (df_AEP['AEP_measured [kWh]'])*0.96
+df_AEP['AEP_extrapolated'] = fn.calculate_extrapolated_AEP(df_extrapolated, Nh=8760)
+df_AEP['quotient'] = (df_AEP['AEP_measured [kWh]'] / df_AEP['AEP_extrapolated'])  # calculate quotient
+df_AEP['check'] = df_AEP['quotient'] < 0.95  # check if quotient is less than 95%
+df_AEP['label'] = np.where(df_AEP['check'], 'complete', 'incomplete')  # assign labels based on the check
 
 
-df_AEP.to_csv('AEP_statitics.csv', float_format='%.3f')
-
+df_AEP.to_csv('AEP_statistics.csv', float_format='%.3f')
+# df_extrapolated.to_csv('extrapolated_statistics.csv', float_format='%.3f')
 
 # Calculate extrapolated AEP for wind speeds outside measurement range
 # This needs to be implemented based on your specific requirements
@@ -172,11 +216,15 @@ df_AEP.to_csv('AEP_statitics.csv', float_format='%.3f')
 #print(f'Lenght Uncertainty AEP : {len(uncertainty_AEP)}')    
 #print(f'Lenght  AEP : {len(AEP)}')    
 
-fn.plot_errorbar(df_AEP,'V_ave', 'AEP', 'uncertainty_AEP',
+fn.plot_errorbar(df_AEP,'V_ave', 'AEP_measured [kWh]', 'uAEP_abs [kWh]',
  'AEP w. Uncertainty','Annual Energy Production (AEP) at Rayleigh WS with Uncertainty',
   'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',showplot = False)
 
-#fn.print_AEP_stats_old(df_AEP)
+
+# fn.plot_scatter('Extrapolated Annual Energy Production (AEP) at Rayleigh WS',df_extrapolated['extrapolated_ws'],
+#                 df_extrapolated['extrapolated_AEP'],'Extrapolated AEP',
+# label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
+#                 plot_bool=True)
 
 # AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated
 fn.print_AEP_stats(df_AEP) #missing extrapolated AEP ??

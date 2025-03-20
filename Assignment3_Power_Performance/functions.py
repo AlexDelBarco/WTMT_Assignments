@@ -5,35 +5,40 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 import os
 #%% Plotting functions
-def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,height = 100, unit ='Wind Speed (m/s)',plot_bool = False ):
+def plot_scatter_and_lines(measurement,df_mean,df_max = None,df_min = None,height = 100,
+                            unit ='Wind Speed (m/s)',plot_bool = False ):
+    plt.figure(figsize=(50,10))
+    plt.plot(df_mean, label = 'mean', linewidth=1)
+    if df_max is not None and df_min is not None:
+        plt.plot(df_max, label = 'min', linewidth=1)
+        plt.plot(df_min, label = 'max', linewidth=1)
+    plt.xlabel('Time', fontsize=20)
+    plt.ylabel(unit, fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_line.png')
+
     if plot_bool == True:
-        plt.figure(figsize=(50,10))
-        plt.plot(df_mean, label = 'mean', linewidth=1)
-        if df_max is not None and df_min is not None:
-            plt.plot(df_max, label = 'min', linewidth=1)
-            plt.plot(df_min, label = 'max', linewidth=1)
-        plt.xlabel('Time', fontsize=20)
-        plt.ylabel(unit, fontsize=20)
-        plt.xticks(fontsize=15)
-        plt.yticks(fontsize=15)
-        plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
-        plt.legend(fontsize=20)
-        plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_line.png')
         plt.show()
+    else:
+        plt.close()
 
 
-        plt.figure(figsize=(50, 10))
-        plt.scatter(df_mean.index, df_mean, label='mean', s=1)
-        if df_max is not None and df_min is not None:
-            plt.scatter(df_max.index, df_max, label='min', s=1)
-            plt.scatter(df_min.index, df_min, label='max', s=1)
-        plt.xlabel('Time', fontsize=20)
-        plt.ylabel(unit, fontsize=20)
-        plt.xticks(fontsize=15)
-        plt.yticks(fontsize=15)
-        plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
-        plt.legend(fontsize=20)
-        plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_scatter.png')
+    plt.figure(figsize=(50, 10))
+    plt.scatter(df_mean.index, df_mean, label='mean', s=1)
+    if df_max is not None and df_min is not None:
+        plt.scatter(df_max.index, df_max, label='min', s=1)
+        plt.scatter(df_min.index, df_min, label='max', s=1)
+    plt.xlabel('Time', fontsize=20)
+    plt.ylabel(unit, fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.title(f'{measurement} {height}m 10min Time Series', fontsize=25)
+    plt.legend(fontsize=20)
+    plt.savefig(f'Pictures/{measurement}_{height}m_10min_Time_Series_scatter.png')
+    if plot_bool == True:
         plt.show()
 
 def plot_scatter(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Speed (m/s)', 
@@ -57,34 +62,36 @@ def plot_scatter(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Sp
         label3 (str, optional): Label for third dataset
         draw_line (bool): Whether to draw a line through first dataset
     """
-    if plot_bool:
-        plt.figure(figsize=(50,10))
+    
+    plt.figure(figsize=(50,10))
+    
+    # Plot first dataset with optional line
+    plt.scatter(df1x, df1y, label=label1)
+    if draw_line:
+        plt.plot(df1x, df1y, '-', alpha=0.5)
         
-        # Plot first dataset with optional line
-        plt.scatter(df1x, df1y, label=label1)
-        if draw_line:
-            plt.plot(df1x, df1y, '-', alpha=0.5)
+    # Plot second dataset if provided
+    if df2x is not None:
+        plt.scatter(df2x, df2y, label=label2, s=5)
             
-        # Plot second dataset if provided
-        if df2x is not None:
-            plt.scatter(df2x, df2y, label=label2, s=5)
-                
-        # Plot third dataset if provided
-        if df3x is not None:
-            plt.scatter(df3x, df3y, label=label3, s=5)
-                
-        plt.xlabel(label_x, fontsize=20)
-        plt.ylabel(label_y, fontsize=20)
-        plt.xticks(fontsize=15)
-        plt.yticks(fontsize=15)
-        plt.title(title, fontsize=25)
-        plt.legend(fontsize=20)
-        
-        pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures')
-        save_path = os.path.join(pictures_dir, f'{title}_10min_Time_Series_scatter.png')
-        plt.savefig(save_path)        
+    # Plot third dataset if provided
+    if df3x is not None:
+        plt.scatter(df3x, df3y, label=label3, s=5)
+            
+    plt.xlabel(label_x, fontsize=20)
+    plt.ylabel(label_y, fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.title(title, fontsize=25)
+    plt.legend(fontsize=20)
+    
+    pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures')
+    save_path = os.path.join(pictures_dir, f'{title}_10min_Time_Series_scatter.png')
+    plt.savefig(save_path)        
+    if plot_bool == True:
         plt.show()
-
+    else:
+        plt.close()
 def plot_all_measurements(df, plot_bool=False):
     """
     Plot various measurements from the DataFrame.
@@ -93,44 +100,42 @@ def plot_all_measurements(df, plot_bool=False):
     df (pd.DataFrame): The input DataFrame containing measurement data.
     plot_bool (bool, optional): If True, plots will be generated and displayed. Defaults to False.
     """
-    if plot_bool == True:
 
-        
-        plot_scatter('Active Power',df.index,df['ActPow'],'Active Power',
-                     label_x='Date',label_y='Active Power [kW]',plot_bool=True)
-                      #df2x = df.index, df2y = df['ActPow_min'], label2 = 'Active Power Min',
-                      #df3x = df.index, df3y = df['ActPow_max'], label3 = 'Active Power Max')
+    plot_scatter('Active Power',df.index,df['ActPow'],'Active Power',
+                    label_x='Date',label_y='Active Power [kW]',plot_bool=plot_bool)
+                    #df2x = df.index, df2y = df['ActPow_min'], label2 = 'Active Power Min',
+                    #df3x = df.index, df3y = df['ActPow_max'], label3 = 'Active Power Max')
 
-        plot_scatter('Mean Rotor Speed',df.index,df['ROT'],'Mean Rotor Speed',
-                     label_x='Date',label_y='Mean Rotor Speed [RPM]',plot_bool=True)
-                      #df2x = df.index, df2y = df['ROT_min'], label2 = 'Mean Rotor Speed Min',
-                      #df3x = df.index, df3y = df['ROT_max'], label3 = 'Mean Rotor Speed Max')
+    plot_scatter('Mean Rotor Speed',df.index,df['ROT'],'Mean Rotor Speed',
+                    label_x='Date',label_y='Mean Rotor Speed [RPM]',plot_bool=plot_bool)
+                    #df2x = df.index, df2y = df['ROT_min'], label2 = 'Mean Rotor Speed Min',
+                    #df3x = df.index, df3y = df['ROT_max'], label3 = 'Mean Rotor Speed Max')
 
-        plot_scatter('Mean Pitch angle',df.index,df['Pitch'],'Pitch angle',
-                     label_x='Date',label_y='Pitch angle [deg]',plot_bool=True)
-                      #df2x = df.index, df2y = df['Pitch_min'], label2 = 'Pitch angle Min',
-                      #df3x = df.index, df3y = df['Pitch_max'], label3 = 'Pitch angle Max')
-        
-        plot_scatter('Mean Yaw angle',df.index,df['yaw'],'Yaw angle',
-                     label_x='Date',label_y='Yaw angle [deg]',plot_bool=True)
-        
-        plot_scatter('Mean wind speed. Mounted on South boom',df.index,df['Wsp_44m'],'Mean wind speed',
-                     label_x='Date',label_y='Mean wind speed [m/s]',plot_bool=True)
-        
-        plot_scatter('Mean Turbulence Intensity. Mounted on South boom',df.index,df['TI_44m'],' Mean TI',
-                     label_x='Date',label_y=' Mean TI [%]',plot_bool=True)
-        
-        plot_scatter('Mean Wind Direction. Mounted on North boom',df.index,df['Wdir_41m'],' Mean Wind Direction',
-                     label_x='Date',label_y=' Mean Wind Direction [deg]',plot_bool=True)
+    plot_scatter('Mean Pitch angle',df.index,df['Pitch'],'Pitch angle',
+                    label_x='Date',label_y='Pitch angle [deg]',plot_bool=plot_bool)
+                    #df2x = df.index, df2y = df['Pitch_min'], label2 = 'Pitch angle Min',
+                    #df3x = df.index, df3y = df['Pitch_max'], label3 = 'Pitch angle Max')
+    
+    plot_scatter('Mean Yaw angle',df.index,df['yaw'],'Yaw angle',
+                    label_x='Date',label_y='Yaw angle [deg]',plot_bool=plot_bool)
+    
+    plot_scatter('Mean wind speed. Mounted on South boom',df.index,df['Wsp_44m'],'Mean wind speed',
+                    label_x='Date',label_y='Mean wind speed [m/s]',plot_bool=plot_bool)
+    
+    plot_scatter('Mean Turbulence Intensity. Mounted on South boom',df.index,df['TI_44m'],' Mean TI',
+                    label_x='Date',label_y=' Mean TI [%]',plot_bool=plot_bool)
+    
+    plot_scatter('Mean Wind Direction. Mounted on North boom',df.index,df['Wdir_41m'],' Mean Wind Direction',
+                    label_x='Date',label_y=' Mean Wind Direction [deg]',plot_bool=plot_bool)
 
-        plot_scatter('Mean temperature. Mounted on South boom',df.index,df['AirAbs_70m'],'Mean Temperature',
-                     label_x='Date',label_y='Mean Temperature [degC]',plot_bool=True)
+    plot_scatter('Mean temperature. Mounted on South boom',df.index,df['AirAbs_70m'],'Mean Temperature',
+                    label_x='Date',label_y='Mean Temperature [degC]',plot_bool=plot_bool)
 
-        plot_scatter('Mean Atmospheric Pressure, measured in mast',df.index,df['Press_enc_2m'],'  atm. pressure',
-                     label_x='Date',label_y=' Mean  atm. pressure [hPa]',plot_bool=True)
+    plot_scatter('Mean Atmospheric Pressure, measured in mast',df.index,df['Press_enc_2m'],'  atm. pressure',
+                    label_x='Date',label_y=' Mean  atm. pressure [hPa]',plot_bool=plot_bool)
 
-        plot_scatter('Mean Relative Humidity',df.index,df['RH_2m'],'Mean relative humidity',
-                     label_x='Date',label_y='  Mean relative humidity [%]',plot_bool=True)
+    plot_scatter('Mean Relative Humidity',df.index,df['RH_2m'],'Mean relative humidity',
+                     label_x='Date',label_y='  Mean relative humidity [%]',plot_bool=plot_bool)
 
 def plot_check_vane_filter(df,title,lb):
     x_vals = [df.index.min(),df.index.max()]
@@ -208,18 +213,27 @@ def plot_errorbar(df_binned,ws,power,uncertainty, label,title, xlabel, ylabel,sh
         power (Str): column name for power
         title (Str): title of the plot
     """
-    if showplot:
-        plt.figure(figsize=(10, 6))
-        plt.errorbar(df_binned[ws], df_binned[power], 
-                    yerr=df_binned[uncertainty], fmt='o-', capsize=5,
-                    label=label)
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        plt.title(title)
-        plt.grid(True)
-        plt.legend()
-        plt.savefig(f'Pictures/{title}.png')
+    
+    plt.figure(figsize=(10, 6))
+    plt.errorbar(df_binned[ws], df_binned[power], 
+                yerr=df_binned[uncertainty], fmt='o-', capsize=5,
+                label=label)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+    plt.legend()
+
+    # Ensure the 'Pictures' directory exists
+    pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures')
+    os.makedirs(pictures_dir, exist_ok=True)
+
+    # Save the plot
+    plt.savefig(os.path.join(pictures_dir, f'{title}.png'))
+    if showplot == True:
         plt.show()
+    else:
+        plt.close()
 
 #%% Print functions
 def print_power_curve_stats(df_binned):
@@ -265,8 +279,9 @@ def print_AEP_stats(df_AEP):
         'V_ave': df_AEP['V_ave'],
         'AEP_measured [kWh]': df_AEP['AEP_measured [kWh]'],
         'uAEP_abs [kWh]': df_AEP['uAEP_abs [kWh]'],
-        'uAEP_rel [%]': df_AEP['uAEP_rel [%]']
-        #'AEPextrapolated': df_AEP['AEPextrapolated']
+        'uAEP_rel [%]': df_AEP['uAEP_rel [%]'],
+        'AEP_extrapolated': df_AEP['AEP_extrapolated'],
+        'label': df_AEP['label']
       })
     
     print("AEP Statistics:")
@@ -499,55 +514,37 @@ def filter_vane(df, columns=None, lower_bound=1.5):
     
     return df_cleaned
 
-
-def replace_outliers_with_nan(df, columns=None, factor=3,  abs_threshold=None):
-
+def remove_outliers_mask(lower_bound, upperbound, df, columns=None, parameter=None, unit=None, show_plot=False):
     """
-    Replace outlier values with NaN in specified columns of a DataFrame.
-    Outliers are defined as values whose rate of change exceeds the average
-    rate of change by a factor specified by the user.
-    
+    Remove outliers from specified columns of a DataFrame by replacing them with NaN.
+
     Parameters:
-    df (pd.DataFrame): The input DataFrame
-    columns (list, optional): List of column names to check. If None, checks all columns
-    factor (float): Multiplier for average gradient to set threshold. Default is 3
-    
+    lower_bound (float): Minimum acceptable value.
+    upperbound (float): Maximum acceptable value.
+    df (pd.DataFrame): The input DataFrame.
+    columns (str or list, optional): Column name or list of column names to process.
+    parameter (str, optional): Name of the parameter for plot titles (used if show_plot=True).
+    unit (str, optional): Unit of the parameter for plot labels (used if show_plot=True).
+    show_plot (bool, optional): Whether to show scatter plots before and after cleaning.
+
     Returns:
-    pd.DataFrame: DataFrame with outliers replaced by NaN
+    pd.DataFrame: The modified DataFrame with outliers replaced by NaN.
     """
-    df_cleaned = df.copy()
-    
-    # If no columns specified, use all columns
-    if columns is None:
-        columns = df.columns
-    
-    for column in columns:
-        # Calculate gradients (rate of change between consecutive values)
-        gradients = df_cleaned[column].diff().abs()
-        
-        # Calculate average gradient (excluding NaN values)
-        avg_gradient = gradients.mean()
-        
-        # Calculate maximum allowed gradient
-        max_allowed_gradient = avg_gradient * (1 + factor)
-        
-        # Create mask for values that exceed the maximum allowed gradient
-        mask = gradients > max_allowed_gradient
-        
-        # Replace outliers with NaN
-        if mask.any():
-            df_cleaned.loc[mask, column] = np.nan
-            print(f"Replaced {mask.sum()} outlier values with NaN in column: {column}")
-            print(f"Average gradient: {avg_gradient:.2f}, Max allowed gradient: {max_allowed_gradient:.2f}")
+    #print(df.columns)
+    plot_scatter(f'{parameter} Before Cleaning', df.index, df[columns], label1 = parameter,
+                  label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
 
-        if abs_threshold is not None:
-            abs_outlier_mask = (df_cleaned[column].abs() > abs_threshold)
-            df_cleaned.loc[abs_outlier_mask, column] = np.nan
-            if abs_outlier_mask.any():
-                print(f"Replaced {abs_outlier_mask.sum()} absolute outlier values with NaN in column: {column}")
-    
-    return df_cleaned
 
+    # Create a mask for outliers based on 'Wsp_44m'
+    mask = (df[columns] < lower_bound) | (df[columns] > upperbound)
+
+    # Apply the mask to all columns in the DataFrame
+    df = df.mask(mask, other=np.nan).copy()
+
+    plot_scatter(f'{parameter} After Cleaning', df.index, df[columns], label1 = parameter,
+                  label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
+
+    return df
 
 def filter_direction(df, highest_bound, lowest_bound, meas):
 
@@ -636,14 +633,41 @@ def filter_ice_on_cups(df, ice_threshold=2):
     
     return df_filtered, points_removed
 
-def remove_outliers_mask(lower_bound,upperbound,df,column,parameter,unit,show_plot = False):
 
-    plot_scatter(f'{parameter} Before Cleaning', df.index, df[column], 
-                f'{parameter} [{unit}]', label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
-    mask = (df[column] < lower_bound) | (df[column] > upperbound)
-    df[column] = df[column].mask(mask).copy() #replace with NaN
-    plot_scatter(f'{parameter} After Cleaning', df.index, df[column], 
-                f'{parameter} [{unit}]', label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
+    """
+    Remove outliers from specified columns of a DataFrame by replacing them with NaN.
+
+    Parameters:
+    lower_bound (float): Minimum acceptable value.
+    upperbound (float): Maximum acceptable value.
+    df (pd.DataFrame): The input DataFrame.
+    columns (list, optional): List of column names to process. If None, all columns are processed.
+    parameter (str, optional): Name of the parameter for plot titles (used if show_plot=True).
+    unit (str, optional): Unit of the parameter for plot labels (used if show_plot=True).
+    show_plot (bool, optional): Whether to show scatter plots before and after cleaning.
+
+    Returns:
+    pd.DataFrame: The modified DataFrame with outliers replaced by NaN.
+    """
+    # If no specific columns are provided, process all columns
+    if columns is None:
+        columns = df.columns
+
+    for column in columns:
+        if show_plot:
+            plot_scatter(f'{parameter or column} Before Cleaning', df.index, df[column],
+                         f'{parameter or column} [{unit or ""}]', label_x='Date', label_y=f'{parameter or column} [{unit or ""}]', plot_bool=show_plot)
+        
+        # Create a mask for outliers
+        mask = (df[column] < lower_bound) | (df[column] > upperbound)
+        
+        # Replace outliers with NaN
+        df[column] = df[column].mask(mask).copy()
+        
+        if show_plot:
+            plot_scatter(f'{parameter or column} After Cleaning', df.index, df[column],
+                         f'{parameter or column} [{unit or ""}]', label_x='Date', label_y=f'{parameter or column} [{unit or ""}]', plot_bool=show_plot)
+    
     return df
 
 #%% Analysis functions
@@ -1023,16 +1047,51 @@ def calculate_AEP(df_binned, Nh=8760):
     # Compute AEP using numerical integration over wind speed bins
     for i in range(1, N):  # Start from 1 to avoid index errors with i-1
         delta_F = Rayleigh_CDF(Vi.iloc[i]) - Rayleigh_CDF(Vi.iloc[i-1])  # Change in Rayleigh CDF
+        #print(f'delta_F = {delta_F}')
         avg_P = (Pi.iloc[i] + Pi.iloc[i-1]) / 2  # Average power output between bins
+        #print(f'avg_P : {avg_P}')
         sum_AEP += delta_F * avg_P  # Contribution to total AEP
 
         #uncertainty AEP
         sum_uncertainty_AEP += delta_F*s_i.iloc[i]+(delta_F*u_i.iloc[i])**2
 
-    sum_AEP /= 1000 #convert to kW
-    AEP = sum_AEP * Nh  # Scale by total hours in a year to get kWh
+    sum_AEP /= 1000 #convert to MW
+    AEP = sum_AEP * Nh  # Scale by total hours in a year to get MWh
 
-    uncertainty_AEP = Nh*np.sqrt(sum_uncertainty_AEP)/1000 #scale uncertainty to kW like AEP
+    uncertainty_AEP = Nh*np.sqrt(sum_uncertainty_AEP)/1000 #scale uncertainty to MW like AEP
 
     return AEP, uncertainty_AEP
+
+def calculate_extrapolated_AEP(df_extrapolated, Nh=8760):
+    """
+    Calculates the Annual Energy Production (AEP) using a binned wind speed distribution.
+
+    Parameters:
+    df_binned (pd.DataFrame): Dataframe containing binned wind speed (`mean_ws`) and power (`mean_power`).
+    Nh (int, optional): Number of hours in a year (default is 8760).
+
+    Returns:
+    float: Estimated Annual Energy Production (AEP).
+    """
+    # Extract wind speed and power bins
+    Vi = df_extrapolated['extrapolated_ws']  # Normalized and averaged wind speed in bin i
+    Pi = df_extrapolated['extrapolated_power']  # Normalized and averaged power output in bin i
+    N = len(df_extrapolated)  # Number of bins
+    
+
+    sum_AEP = 0  # Initialize summation for AEP integral
+    
+
+    # Compute AEP using numerical integration over wind speed bins
+    for i in range(1, N):  # Start from 1 to avoid index errors with i-1
+        delta_F = Rayleigh_CDF(Vi.iloc[i]) - Rayleigh_CDF(Vi.iloc[i-1])  # Change in Rayleigh CDF
+        #print(f'delta_F = {delta_F}')
+        avg_P = (Pi.iloc[i] + Pi.iloc[i-1]) / 2  # Average power output between bins
+        #print(f'avg_P : {avg_P}')
+        sum_AEP += delta_F * avg_P  # Contribution to total AEP
+
+    sum_AEP /= 1000 #convert to MW
+    AEP = sum_AEP * Nh  # Scale by total hours in a year to get MWh
+
+    return AEP
 
