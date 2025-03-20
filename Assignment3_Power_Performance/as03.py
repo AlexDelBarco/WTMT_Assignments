@@ -88,7 +88,7 @@ df['rho'] = fn.calculate_rho(df,'Press_enc_2m','Temp_K','RH_2m','Vapor_Pressure'
 fn.plot_scatter('Air Density',df.index,df['rho'],'Air Density',label_x='Temperature [degC]',label_y='Air Density [Pa]',
                 plot_bool=False)
 
-print(f"Mean air density: {df['rho'].mean():.4f} kg/m³")
+#print(f"Mean air density: {df['rho'].mean():.4f} kg/m³")
 
 #Perform data normalization
 df['norm_power'] = fn.normalize_power_stall_regulated(df,'ActPow','rho')
@@ -143,14 +143,31 @@ fn.print_power_curve_stats(df_binned)
 V_ave = np.arange(4, 12)  # Rayleigh mean wind speeds from 4 to 11 m/s
 df_AEP = pd.DataFrame()
 df_AEP['V_ave'] = V_ave
-AEP, uncertainty_AEP = fn.calculate_AEP(df_binned)
-df_AEP['AEP'] = AEP
-df_AEP['uncertainty_AEP'] = uncertainty_AEP 
+AEP, uAEP_abs = fn.calculate_AEP(df_binned)
+df_AEP['AEP_measured [kWh]'] = AEP
+df_AEP['uAEP_abs [kWh]'] = uAEP_abs 
+df_AEP['uAEP_rel [%]'] = uAEP_abs / AEP*100
+
+
+df_AEP.to_csv('AEP_statitics.csv', float_format='%.3f')
+
+
+# Calculate extrapolated AEP for wind speeds outside measurement range
+# This needs to be implemented based on your specific requirements
+
+# Add completeness labels
+# df_AEP['completeness'] = 'incomplete'  # Default to incomplete
+# measured_range_mask = (df_aep['Vave'] >= df_binned['mean_ws'].min()) & \
+#                      (df_aep['Vave'] <= df_binned['mean_ws'].max())
+# df_aep.loc[measured_range_mask, 'completeness'] = 'complete'
+
+# Print results table
+
 
 # print(f"Annual Energy Production (AEP): {AEP}")
-fn.plot_scatter('Annual Energy Production (AEP) at Rayleigh WS',V_ave,AEP,'AEP',
-label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
-                plot_bool=False)
+# fn.plot_scatter('Annual Energy Production (AEP) at Rayleigh WS',V_ave,AEP,'AEP',
+# label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
+#                 plot_bool=False)
 
 #print(f'Lenght Uncertainty AEP : {len(uncertainty_AEP)}')    
 #print(f'Lenght  AEP : {len(AEP)}')    
@@ -159,4 +176,7 @@ fn.plot_errorbar(df_AEP,'V_ave', 'AEP', 'uncertainty_AEP',
  'AEP w. Uncertainty','Annual Energy Production (AEP) at Rayleigh WS with Uncertainty',
   'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',showplot = False)
 
+#fn.print_AEP_stats_old(df_AEP)
+
 # AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated
+fn.print_AEP_stats(df_AEP) #missing extrapolated AEP ??

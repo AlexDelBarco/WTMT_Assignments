@@ -241,7 +241,7 @@ def print_power_curve_stats(df_binned):
         'uci': df_binned['u_c']
     })
     
-    print("\nPower Curve Statistics:")
+    print("Power Curve Statistics:")
     print("=" * 80)
     print(df_selected.to_string(
         index=False,
@@ -262,14 +262,40 @@ def print_AEP_stats(df_AEP):
     # Create bin numbers starting from 1
     # AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated 
     df_selected = pd.DataFrame({
-        'Vave': df_AEP['Vave'],
-        'AEP': df_AEP['AEP'],
-        'uAEP_abs': df_AEP['uAEP_abs'],
-        'uAEP_rel': df_AEP['uAEP_rel'],
-        'AEPextrapolated': df_AEP['AEPextrapolated']
+        'V_ave': df_AEP['V_ave'],
+        'AEP_measured [kWh]': df_AEP['AEP_measured [kWh]'],
+        'uAEP_abs [kWh]': df_AEP['uAEP_abs [kWh]'],
+        'uAEP_rel [%]': df_AEP['uAEP_rel [%]']
+        #'AEPextrapolated': df_AEP['AEPextrapolated']
       })
     
-    print("\AEP Statistics:")
+    print("AEP Statistics:")
+    print("=" * 80)
+    print(df_selected.to_string(
+        index=False,
+        float_format=lambda x: '{:8.3f}'.format(x),
+        col_space=10,
+        justify='right'
+    ))
+    print("=" * 80)
+
+def print_AEP_stats_old(df_AEP):
+    """Print power curve statistics table with selected columns.
+    
+    Parameters:
+    -----------
+    df_binned : pandas.DataFrame
+        DataFrame containing binned power curve statistics
+    """
+    # Create bin numbers starting from 1
+    # AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated 
+    df_selected = pd.DataFrame({
+        'V_ave': df_AEP['V_ave'],
+        'AEP': df_AEP['AEP'],
+        'uncertainty_AEP': df_AEP['uncertainty_AEP']
+      })
+    
+    print("/nAEP Statistics:")
     print("=" * 80)
     print(df_selected.to_string(
         index=False,
