@@ -1,4 +1,4 @@
-,V_ave,AEP_measured [kWh],uAEP_abs [kWh],uAEP_rel [%],AEP_extrapolated,quotient,check,label
+,V_ave,AEP_measured [MWh],uAEP_abs [MWh],uAEP_rel [%],AEP_extrapolated,quotient,check,label
 0,4,545.929,11.015,2.018,545.109,1.002,True,complete
 1,5,1065.169,11.698,1.098,1064.743,1.000,True,complete
 2,6,1667.778,12.577,0.754,1686.502,0.989,True,complete

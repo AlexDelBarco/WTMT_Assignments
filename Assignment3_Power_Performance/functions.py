@@ -47,7 +47,7 @@ def plot_scatter_and_lines(measurement, df_mean, df_max=None, df_min=None, heigh
 
 def plot_scatter(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Speed (m/s)', 
                 plot_bool=False, df2x=None, df2y=None, label2=None, df3x=None, df3y=None, 
-                label3=None, df4x = None, df4y = None, label4 = None, draw_line=False, dot_size=5):
+                label3=None, df4x = None, df4y = None, label4 = None, draw_line=False, dot_size1=5, dot_size2=5):
     """Plot scatter data with optional connecting line through first dataset.
     
     Args:
@@ -70,21 +70,21 @@ def plot_scatter(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Sp
     plt.figure(figsize=(16*2, 9*2))
     
     #  Plot first dataset with optional line
-    plt.scatter(df1x, df1y, label=label1, s = dot_size)
+    plt.scatter(df1x, df1y, label=label1, s = dot_size1)
     
     if draw_line:
         plt.plot(df1x, df1y, '-', alpha=0.5)
         
     #  Plot second dataset if provided
     if df2x is not None:
-        plt.scatter(df2x, df2y, label=label2, s = dot_size)
+        plt.scatter(df2x, df2y, label=label2, s = dot_size2)
             
     #  Plot third dataset if provided
     if df3x is not None:
-        plt.scatter(df3x, df3y, label=label3, s = dot_size)
+        plt.scatter(df3x, df3y, label=label3, s = dot_size1)
     
     if df4x is not None:
-        plt.scatter(df4x, df4y, label=label4, s = dot_size)
+        plt.scatter(df4x, df4y, label=label4, s = dot_size1)
 
     plt.xlabel(label_x, fontsize=20)
     plt.ylabel(label_y, fontsize=20)
@@ -112,6 +112,7 @@ def plot_scatter(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Sp
     
     pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures')
     save_path = os.path.join(pictures_dir, f'{title}.png')
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path)        
     if plot_bool == True:
         plt.show()
@@ -126,40 +127,40 @@ def plot_all_measurements(df, plot_bool=False):
     plot_bool (bool, optional): If True, plots will be generated and displayed. Defaults to False.
     """
 
-    plot_scatter('Active Power',df.index,df['ActPow'],'Active Power',
+    plot_scatter('Pre-Clean_Active Power',df.index,df['ActPow'],'Active Power',
                     label_x='Date',label_y='Active Power [kW]',plot_bool=plot_bool)
                     # df2x = df.index, df2y = df['ActPow_min'], label2 = 'Active Power Min',
                     # df3x = df.index, df3y = df['ActPow_max'], label3 = 'Active Power Max')
 
-    plot_scatter('Mean Rotor Speed',df.index,df['ROT'],'Mean Rotor Speed',
+    plot_scatter('Pre-Clean_Mean Rotor Speed',df.index,df['ROT'],'Mean Rotor Speed',
                     label_x='Date',label_y='Mean Rotor Speed [RPM]',plot_bool=plot_bool)
                     # df2x = df.index, df2y = df['ROT_min'], label2 = 'Mean Rotor Speed Min',
                     # df3x = df.index, df3y = df['ROT_max'], label3 = 'Mean Rotor Speed Max')
 
-    plot_scatter('Mean Pitch angle',df.index,df['Pitch'],'Pitch angle',
+    plot_scatter('Pre-Clean_Mean Pitch angle',df.index,df['Pitch'],'Pitch angle',
                     label_x='Date',label_y='Pitch angle [deg]',plot_bool=plot_bool)
                     # df2x = df.index, df2y = df['Pitch_min'], label2 = 'Pitch angle Min',
                     # df3x = df.index, df3y = df['Pitch_max'], label3 = 'Pitch angle Max')
     
-    plot_scatter('Mean Yaw angle',df.index,df['yaw'],'Yaw angle',
+    plot_scatter('Pre-Clean_Mean Yaw angle',df.index,df['yaw'],'Yaw angle',
                     label_x='Date',label_y='Yaw angle [deg]',plot_bool=plot_bool)
     
-    plot_scatter('Mean wind speed. Mounted on South boom',df.index,df['Wsp_44m'],'Mean wind speed',
+    plot_scatter('Pre-Clean_Mean wind speed. Mounted on South boom',df.index,df['Wsp_44m'],'Mean wind speed',
                     label_x='Date',label_y='Mean wind speed [m/s]',plot_bool=plot_bool)
     
-    plot_scatter('Mean Turbulence Intensity. Mounted on South boom',df.index,df['TI_44m'],' Mean TI',
+    plot_scatter('Pre-Clean_Mean Turbulence Intensity. Mounted on South boom',df.index,df['TI_44m'],' Mean TI',
                     label_x='Date',label_y=' Mean TI [%]',plot_bool=plot_bool)
     
-    plot_scatter('Mean Wind Direction. Mounted on North boom',df.index,df['Wdir_41m'],' Mean Wind Direction',
+    plot_scatter('Pre-Clean_Mean Wind Direction. Mounted on North boom',df.index,df['Wdir_41m'],' Mean Wind Direction',
                     label_x='Date',label_y=' Mean Wind Direction [deg]',plot_bool=plot_bool)
 
-    plot_scatter('Mean temperature. Mounted on South boom',df.index,df['AirAbs_70m'],'Mean Temperature',
+    plot_scatter('Pre-Clean_Mean temperature. Mounted on South boom',df.index,df['AirAbs_70m'],'Mean Temperature',
                     label_x='Date',label_y='Mean Temperature [degC]',plot_bool=plot_bool)
 
-    plot_scatter('Mean Atmospheric Pressure, measured in mast',df.index,df['Press_enc_2m'],'  atm. pressure',
+    plot_scatter('Pre-Clean_Mean Atmospheric Pressure, measured in mast',df.index,df['Press_enc_2m'],'  atm. pressure',
                     label_x='Date',label_y=' Mean  atm. pressure [hPa]',plot_bool=plot_bool)
 
-    plot_scatter('Mean Relative Humidity',df.index,df['RH_2m'],'Mean relative humidity',
+    plot_scatter('Pre-Clean_Mean Relative Humidity',df.index,df['RH_2m'],'Mean relative humidity',
                      label_x='Date',label_y='  Mean relative humidity [%]',plot_bool=plot_bool)
 
 def plot_check_vane_filter(df,title,lb):
@@ -274,7 +275,7 @@ def plot_AEP(df_AEP, ws, aep, aep_extrapolated, uncertainty, showplot = False):
     plt.scatter(df_AEP[ws], df_AEP[aep_extrapolated],
                 label='AEP extrapolated', color='red')
     plt.xlabel('V_ave [m/s]')
-    plt.ylabel('AEP [kWh]')
+    plt.ylabel('AEP [MWh]')
     plt.title('AEP Statistics')
     plt.grid(True)
     plt.legend()
@@ -319,6 +320,7 @@ def print_power_curve_stats(df_binned):
         justify='right'
     ))
     print("=" * 80)
+    return df_selected
 
 def print_AEP_stats(df_AEP):
     """Print power curve statistics table with selected columns.
@@ -332,8 +334,8 @@ def print_AEP_stats(df_AEP):
     #  AEP table: Vave , AEPmeasured , uAEP (absolute), uAEP (relative), AEPextrapolated 
     df_selected = pd.DataFrame({
         'V_ave': df_AEP['V_ave'],
-        'AEP_measured [kWh]': df_AEP['AEP_measured [kWh]'],
-        'uAEP_abs [kWh]': df_AEP['uAEP_abs [kWh]'],
+        'AEP_measured [MWh]': df_AEP['AEP_measured [MWh]'],
+        'uAEP_abs [MWh]': df_AEP['uAEP_abs [MWh]'],
         'uAEP_rel [%]': df_AEP['uAEP_rel [%]'],
         'AEP_extrapolated': df_AEP['AEP_extrapolated'],
         'label': df_AEP['label']
@@ -585,21 +587,24 @@ def remove_outliers_mask(lower_bound, upperbound, df, columns=None, parameter=No
     Returns:
     pd.DataFrame: The modified DataFrame with outliers replaced by NaN.
     """
-    # print(df.columns)
-    plot_scatter(f'{parameter} Before Cleaning', df.index, df[columns], label1 = parameter,
-                  label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
+    
+    df_copy = df.copy()
+    # plot_scatter(f'{parameter} Before Cleaning', df.index, df[columns], label1 = parameter,
+    #               label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
 
 
     #  Create a mask for outliers based on 'Wsp_44m'
-    mask = (df[columns] < lower_bound) | (df[columns] > upperbound)
+    mask = (df_copy[columns] < lower_bound) | (df_copy[columns] > upperbound)
 
     #  Apply the mask to all columns in the DataFrame
-    df = df.mask(mask, other=np.nan).copy()
+    df_copy = df_copy.mask(mask, other=np.nan).copy()
 
-    plot_scatter(f'{parameter} After Cleaning', df.index, df[columns], label1 = parameter,
-                  label_x='Date', label_y=f'{parameter} [{unit}]', plot_bool=show_plot)
+    plot_scatter(f'Cleaning_{parameter}', df.index, df[columns], label1 = f'{parameter} Before cleaning',
+                  label_x='Date', label_y=f'{parameter} [{unit}] ',
+                    plot_bool=show_plot, df2x = df_copy.index, df2y = df_copy[columns],
+                      label2 = f'{parameter} [{unit}] After cleaning', dot_size1=100, dot_size2 = 80)
 
-    return df
+    return df_copy
 
 def remove_outliers_mask_power(cut_in, lower_bound, df, show_plot=False):
     """
@@ -625,8 +630,8 @@ def remove_outliers_mask_power(cut_in, lower_bound, df, show_plot=False):
     df_copy = df.copy()
 
     # print(df.columns)
-    plot_scatter('Active Power Before Cleaning', df_copy['Wsp_44m'], df_copy['ActPow'], label1 = 'Active Power',
-                  label_x='Wind Speed [m/s]', label_y='Power [kW]', plot_bool=show_plot)
+    # plot_scatter('Active Power Before Cleaning', df_copy['Wsp_44m'], df_copy['ActPow'], label1 = 'Active Power',
+    #               label_x='Wind Speed [m/s]', label_y='Power [kW]', plot_bool=show_plot)
 
     #  Create masks for different conditions
     above_cut_in = df_copy['Wsp_44m'] >= cut_in
@@ -641,8 +646,11 @@ def remove_outliers_mask_power(cut_in, lower_bound, df, show_plot=False):
     #  Apply the mask to all columns in the DataFrame
     df_copy = df_copy.mask(outlier_mask, other=np.nan).copy()
 
-    plot_scatter('Active Power After Cleaning', df_copy['Wsp_44m'], df_copy['ActPow'], label1 = 'Active Power',
-                  label_x='Wind Speed [m/s]', label_y='Power [kW]', plot_bool=show_plot)
+    plot_scatter('Cleaned Active Power', df_copy['Wsp_44m'], df_copy['ActPow'],
+                  label1 = 'Active Power After Cleaning',
+                  label_x='Wind Speed [m/s]', label_y='Power [kW]',
+                    plot_bool=show_plot, df2x = df['Wsp_44m'],
+                      df2y = df['ActPow'], label2 = 'Active Power Before Cleaning', dot_size1=100, dot_size2=80)
 
 
     return df_copy

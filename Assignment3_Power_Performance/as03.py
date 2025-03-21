@@ -1,5 +1,7 @@
 """AS03: Power Performance Analysis of a Wind Turbine """
-
+print('\n')
+print('################################################################')
+print('Initiating Program')
 # %% Imports
 import os
 import pandas as pd
@@ -121,7 +123,7 @@ df['Temp_K'] = df['AirAbs_70m'] + 273.15
 df['Vapor_Pressure'] = fn.vapor_pressure(df['Temp_K'])
 # show vapor pressure vs temperature and compare with
 # plots on the internet (It looks correct imo)
-fn.plot_scatter('Vapor Pressure', df['AirAbs_70m'], df['Vapor_Pressure'],
+fn.plot_scatter('Vapor_Pressure', df['AirAbs_70m'], df['Vapor_Pressure'],
                 'Vapor Pressure', label_x='Temperature [C]',
                 label_y='Vapor Pressure [Pa]', plot_bool=False)
 print('Vapor Pressure calculated successfully')
@@ -137,7 +139,7 @@ df['rho'] = fn.calculate_rho(df, 'Press_enc_2m', 'Temp_K',
 # df = fn.remove_outliers_mask(0,4000,df,'rho','Air Density',
 #                              'kg/m^3',show_plot=True)
 
-fn.plot_scatter('Air Density', df.index, df['rho'], 'Air Density',
+fn.plot_scatter('Air_Density', df['Temp_K'], df['rho'], 'Air Density',
                 label_x='Temperature [degC]', label_y='Air Density [Pa]',
                 plot_bool=False)
 print('Air Density calculated successfully')
@@ -148,15 +150,20 @@ print('Air Density calculated successfully')
 df['norm_power'] = fn.normalize_power_stall_regulated(df, 'ActPow', 'rho')
 
 # plot normalized power vs wind speed
-fn.plot_scatter('Normalized Power', df['Wsp_44m'], df['norm_power'],
+fn.plot_scatter('Normalized_Power', df['Wsp_44m'], df['norm_power'],
                 'Normalized Power', label_x='Wind Speed [m/s]',
                 label_y='Normalized Power', plot_bool=False)
 
 df['norm_ws'] = fn.normalize_wind_active_controlled(df, 'Wsp_44m', 'rho')
 # plot normalized wind speed vs wind speed
-fn.plot_scatter('Normalized Wind Speed', df.index, df['norm_ws'],
+fn.plot_scatter('Normalized_Wind Speed', df['Wsp_44m'], df['norm_ws'],
                 'Normalized Wind Speed', label_x='Wind Speed [m/s]',
                 label_y='Normalized Wind Speed', plot_bool=False)
+
+
+fn.plot_scatter('Normalized_Power_vs_Normalized Wind Speed', df['norm_ws'], df['norm_power'],
+                'Normalized Power', label_x='Normalized Wind Speed [m/s]',
+                label_y='Normalized Power [kW] ', plot_bool=False)
 print('Data normalized successfully')
 
 # %% 3.2 B) Report the bin-averaged values of mean wind speed,
@@ -179,7 +186,7 @@ df_binned.to_csv('binned_statistics.csv', float_format='%.3f')
 
 # Scattered plot of power Pi statistics as function of hub height wind speed Vi
 # (What does this sentence mean?)
-fn.plot_scatter('Binned Mean Active Power', df_binned['mean_ws'],
+fn.plot_scatter('Binned_Mean_Active_Power', df_binned['mean_ws'],
                 df_binned['mean_power'],
                 label1='Binned Mean Normalized Active Power',
                 label_x='Wind Speed [m/s]', label_y='Power [kW]',
@@ -189,12 +196,12 @@ fn.plot_scatter('Binned Mean Active Power', df_binned['mean_ws'],
                 df3x=df_binned['mean_ws'], df3y=df_binned['min_power'],
                 label3='Power Min',
                 df4x=df_binned['mean_ws'], df4y=df_binned['max_power'],
-                label4='Power Max', dot_size=2)
+                label4='Power Max', dot_size1=100)
 
-fn.plot_scatter('Normalized Mean Active Power', df['norm_ws'],
+fn.plot_scatter('Normalized_Mean_Active_Power', df['norm_ws'],
                 df['norm_power'], label1='Mean Normalized Active Power',
                 label_x='Wind Speed [m/s]', label_y='Power [kW]',
-                plot_bool=True,
+                plot_bool=False,
                 df2x=df['norm_ws'], df2y=df['ActPow_stdev'],
                 label2='Power Std Dev',
                 df3x=df['norm_ws'], df3y=df['ActPow_min'], label3='Power Min',
@@ -209,14 +216,16 @@ fn.plot_errorbar(df_binned, 'binned_ws', 'mean_power', 'u_c',
                  showplot=False)
 
 # Bin-averaged Cp as function of bin-averaged mean wind speed Vi.
-fn.plot_scatter('CP vs Mean Wind Speed', df_binned['mean_ws'], df_binned['Cp'],
+fn.plot_scatter('CP_vs_Mean_Wind_Speed', df_binned['mean_ws'], df_binned['Cp'],
                 'Cp', label_x='Mean Wind Speed [m/s]', label_y='Cp [-]',
                 plot_bool=False, draw_line=True)
 
 #  table: bin no-i, Vi, Pi, Cp, si, ui & uci
 
 # Print power curve stats
-fn.print_power_curve_stats(df_binned)
+df_binned_selected = fn.print_power_curve_stats(df_binned)
+df_binned_selected.to_csv('binned_statistics_selected.csv', float_format='%.3f')
+
 print('Binned statistics calculated successfully')
 # %% Q3.3: Calculate and report the results of AEP-measured and
 # AEP-extrapolated using Rayleigh wind speed distributions
@@ -251,15 +260,15 @@ df_binned['extrapolated_power'] = df_binned['mean_power'].where(
 AEP, uAEP_abs = fn.calculate_AEP(df_binned)
 print('AEP calculated successfully')
 
-df_AEP['AEP_measured [kWh]'] = AEP
-df_AEP['uAEP_abs [kWh]'] = uAEP_abs
+df_AEP['AEP_measured [MWh]'] = AEP
+df_AEP['uAEP_abs [MWh]'] = uAEP_abs
 df_AEP['uAEP_rel [%]'] = uAEP_abs / AEP*100
-# df_AEP['AEP_extrapolated'] = (df_AEP['AEP_measured [kWh]'])*0.96
+# df_AEP['AEP_extrapolated'] = (df_AEP['AEP_measured [MWh]'])*0.96
 df_AEP['AEP_extrapolated'] = fn.calculate_extrapolated_AEP(df_extrapolated,
                                                            Nh=8760)
 print('Extrapolated AEP calculated successfully')
 
-df_AEP['quotient'] = (df_AEP['AEP_measured [kWh]']
+df_AEP['quotient'] = (df_AEP['AEP_measured [MWh]']
                       / df_AEP['AEP_extrapolated'])    # calculate quotient
 # check if quotient is larger than 95%
 df_AEP['check'] = df_AEP['quotient'] > 0.95
@@ -286,34 +295,34 @@ print('AEP statistics saved successfully')
 #  print(f"Annual Energy Production (AEP): {AEP}")
 # fn.plot_scatter('Annual Energy Production (AEP) at Rayleigh WS',
 #                  V_ave,AEP,'AEP',
-#  label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [kWh]',
+#  label_x='Rayleigh mean wind speeds [m/s]',label_y='AEP [MWh]',
 #                  plot_bool=False)
 
 # print(f'Lenght Uncertainty AEP : {len(uncertainty_AEP)}')
 # print(f'Lenght  AEP : {len(AEP)}')
 
-fn.plot_errorbar(df_AEP, 'V_ave', 'AEP_measured [kWh]', 'uAEP_abs [kWh]',
+fn.plot_errorbar(df_AEP, 'V_ave', 'AEP_measured [MWh]', 'uAEP_abs [MWh]',
                  'AEP w. Uncertainty',
                  'AEP at Rayleigh WS with Uncertainty',
-                 'Rayleigh Mean Wind Speeds [m/s]', 'AEP [kWh]',
+                 'Rayleigh Mean Wind Speeds [m/s]', 'AEP [MWh]',
                  showplot=False)
 
 
-fn.plot_scatter('Extrapolated AEP at Rayleigh WS', df_AEP['V_ave'],
+fn.plot_scatter('Extrapolated_AEP_at_Rayleigh_WS', df_AEP['V_ave'],
                 df_AEP['AEP_extrapolated'],
                 'Extrapolated AEP', label_x='Rayleigh mean wind speeds [m/s]',
-                label_y='AEP [kWh]', plot_bool=False)
+                label_y='AEP [MWh]', plot_bool=False)
 
 #  AEP table: Vave , AEPmeasured , uAEP (absolute),
 #  uAEP (relative), AEPextrapolated
 fn.print_AEP_stats(df_AEP)   # missing extrapolated AEP ??
 
 # plot AEP statistics
-fn.plot_AEP(df_AEP, 'V_ave', 'AEP_measured [kWh]', 'AEP_extrapolated',
-            'uAEP_abs [kWh]', showplot=False)
+fn.plot_AEP(df_AEP, 'V_ave', 'AEP_measured [MWh]', 'AEP_extrapolated',
+            'uAEP_abs [MWh]', showplot=False)
 
 
 print('AEP statistics plotted successfully')
-print('\newline')
+print('\n')
 print('program finished successfully')
-print('\newline')
+print('\n')
