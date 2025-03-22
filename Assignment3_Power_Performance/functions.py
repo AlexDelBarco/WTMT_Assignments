@@ -5,6 +5,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
+# %% Question 1 functions
+
+def ERD(Ih, Iw):
+
+    De = (2*Ih*Iw)/(Ih+Iw)
+
+    return De
+
+
+def alpha(De, Le):
+
+    al = 1.3*np.rad2deg(np.arctan(2.5*((De)/(Le))+0.15))+10
+
+    return al
+
+
+
 # %% Plotting functions
 
 
