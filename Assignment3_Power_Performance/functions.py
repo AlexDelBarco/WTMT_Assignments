@@ -24,6 +24,29 @@ def alpha(De, Le):
 
 # %% Plotting functions
 
+def plot_obstructed_sectors(sectors, sector_labels, dev):
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    ax.set_theta_zero_location('N')  # Set North as zero degrees
+    ax.set_theta_direction(-1)  # Set clockwise direction
+    
+    # Define the radius (full circle)
+    radius = 1
+
+    colors = plt.cm.get_cmap("tab10", len(sectors))
+    
+    # Plot each obstructed sector
+    for i, ((start, end), label) in enumerate(zip(sectors, sector_labels)):
+        theta1 = np.deg2rad(start)
+        theta2 = np.deg2rad(end)
+        ax.bar(x=(theta1 + theta2) / 2, height=radius, width=theta2 - theta1, color=colors(i), alpha=0.5, label=label)
+    
+
+    # Add legend
+    ax.legend(loc="upper right", bbox_to_anchor=(1.2, 1))
+    
+    plt.title(f'Disturbed Wind Sectors {dev}')
+    #plt.savefig(f'Pictures/Disturbed_Sectors_{dev}.png')
+    plt.show()
 
 def plot_scatter_and_lines(measurement, df_mean, df_max=None, df_min=None, height=100,
                             unit ='Wind Speed (m/s)', plot_bool = False ):
