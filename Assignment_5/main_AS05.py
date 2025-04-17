@@ -32,7 +32,7 @@ fn.plot_load_stats(load_stats, "Wsp_44m_[m/s]")
 
 
 # 2
-print(f'Max ROT {load_stats['ROT_[rpm]'].max()}')
+print(f'Max ROT {load_stats["ROT_[rpm]"].max()}')
 
 # 3 
 
