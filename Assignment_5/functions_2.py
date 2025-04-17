@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import rainflow as rf
+from rainflow import count_cycles
 
 def load_csv_files_to_dict(folder_path):
 
@@ -14,15 +14,45 @@ def load_csv_files_to_dict(folder_path):
             dataframes[df_name] = pd.read_csv(file_path, sep=';')
     return dataframes
 
-def f(s, f_s, m):
-    '''
-    s is load signal in time series
-    f_s is the sampling frequency
-    m is the Wohler exponent
 
-    compute rainflow count of the signal s
-    DEL : 1-Hz Damage Equivalent Value
-    '''
+
+
+def compute_del(s, f_s, m):
+    """
+    Computes the 1-Hz Damage Equivalent Load (DEL)
+      for a given load signal, frequency and Wohler exponent.
+
+    Args:
+        s (array-like): Load signal in time series.
+        f_s (float): Sampling frequency of the signal (Hz).
+        m (float): Wohler exponent.
+
+    Returns:
+        float: The 1-Hz Damage Equivalent Load (DEL).
+    """
+    # Convert to NumPy array, drop NaN values, verify not an empty series
+    signal = np.array(s)
+    signal = signal[~np.isnan(signal)]
+
+    if len(signal) == 0:
+        print("Error: The signal is empty")
+        return None
+
+    # Perform rainflow counting
+    cycles = count_cycles(signal)
+
+    # Calculate the damage by cycle
+    damage = 0
+    for amplitude, count in cycles:
+        damage += (amplitude ** m) * count
+
+    # Compute the DEL
+    T = len(signal) / f_s  # Total duration of the signal in seconds
+    DEL = (damage / T) ** (1 / m)
+
+    return DEL
+
+
 
     # take dictionary, each timeseries, each MxA1, MyA1, MxR... count the N using rainflow
 
