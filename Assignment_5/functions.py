@@ -42,7 +42,7 @@ def plot_stats(dataframe, column):
     plt.legend()
     plt.grid(True)
 
-    safe_column_name = column.replace("[", "").replace("]", "").replace(" ", "_")
+    safe_column_name = column.replace("[", "").replace("]", "").replace(" ", "_").replace("/", "_").replace("-", "_")
     plt.savefig(f'Figures/Plot_load_stats_{safe_column_name}.png')
 
 import numpy as np  # Make sure numpy is imported at the top
