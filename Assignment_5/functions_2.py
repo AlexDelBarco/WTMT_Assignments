@@ -52,7 +52,14 @@ def compute_del(s, f_s, m):
 
     return DEL
 
+def load_csv_with_units(file_path):
 
+    # Read the first two rows to extract column names and units
+    temp_df = pd.read_csv(file_path, sep=';', nrows=2, header=None)
+    column_names = [
+        f"{name}_[{unit}]" if not pd.isna(unit) else name
+        for name, unit in zip(temp_df.iloc[0], temp_df.iloc[1])]
 
-    # take dictionary, each timeseries, each MxA1, MyA1, MxR... count the N using rainflow
-
+    # Load the rest of the file with the merged column names
+    dataframe = pd.read_csv(file_path, sep=';', skiprows=2, names=column_names)
+    return dataframe
