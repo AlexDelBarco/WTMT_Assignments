@@ -32,13 +32,13 @@ m_list = [3, 6, 9, 12]
 s_litst = ['MxA1', 'MyA1', 'MxR', 'MyR', 'MzR', 'MTilt', 'MYaw', 'MzTT', 'MyTB', 'MxTB']
 
 # Timeseries
-timseries = list(timeseries_dict.keys())
+timeseries = list(timeseries_dict.keys())
 
 # Computing DEL for each timeseries, each signal and each m
 
 results_DEL = {}
 
-for tms in timseries:
+for tms in timeseries:
 
     # For each timeseries
     results_DEL[tms] = {}
@@ -59,8 +59,28 @@ load_stats = fn.load_csv_with_units('46400_AS05_Loads_stats_Spring2025.csv')
 load_stats.rename(columns={"rname_[-]": "time"}, inplace=True)
 load_stats['time'] = pd.to_datetime(load_stats['time'], format='%Y%m%d%H%M')
 
-# Timeseries 201702230240, date: 2017-02-23 02:40:00
+# Load Statics of timeseries' timestamps
 
-tms_date_1 = pd.Timestamp('2017-02-23 02:40:00')
+timestamps = []
 
-load_stats_tms1 = load_stats[load_stats['time'] == tms_date_1]
+for tms in timeseries:
+
+    timestamp = pd.to_datetime(tms, format='%Y%m%d%H%M')
+    timestamps.append(timestamp)
+
+load_stats_tms = load_stats[load_stats['time'].isin(timestamps)]
+
+# Replace new computed values of DEL 
+
+load_stats_tms_updated = fn.replace_load_stats_with_results(load_stats_tms, results_DEL)
+load_stats_updated = load_stats.copy()
+load_stats_updated.update(load_stats_tms_updated)
+
+#%% Q5.2.3
+
+#a)
+
+fn.plot_sig(load_stats_updated, 'Wsp_44m_[m/s]', ['MxA1_DEL12_[kNm]', 'MyA1_DEL12_[kNm]'], 
+           title='MxA1 DEL for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=True, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
+
+
