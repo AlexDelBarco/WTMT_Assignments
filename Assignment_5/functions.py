@@ -103,7 +103,7 @@ def filter_outliers_row_based(df, columns, lower_bound, upper_bound,
             print(f"    - Found {counts['low_count']} low values (<{lower_bound} m/s)")
             print(f"    - Found {counts['high_count']} high values (>{upper_bound} m/s)")
     
-    plot_scatter(f'Cleaning {parameter}', df.index, df[columns], label1 = f'{parameter} Before cleaning',
+    plot_scatter(f'Cleaning_{parameter}', df.index, df[columns], label1 = f'{parameter} Before cleaning',
                   label_x='Date', label_y=f'{parameter} [{unit}] ',
                     plot_bool=show_plot, df2x = df_cleaned.index, df2y = df_cleaned[columns],
                       label2 = f'{parameter} [{unit}] After cleaning', dot_size1=100, dot_size2 = 80)
@@ -220,49 +220,27 @@ def plot_scatter(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Sp
     else:
         plt.close()
 
-def power_plot(df_loads, title, show_plot=False):
+def calculate_power_curve_bins(df, ws_bins):
     """
-    Plot the power curve and rotor speed against wind speed.
-
+    Calculate binned statistics and uncertainties for power curve determination.
+    
     Parameters:
-    df_loads (DataFrame): DataFrame containing the data to plot.
-    title (str): Title for the plot.
-    show_plot (bool): Whether to show the plot or save it as an image.
-
-    Returns:
-    None
+    -----------
+    df : pandas.DataFrame
+        DataFrame with normalized wind speed and power
+    ws_bins : numpy.ndarray
+        Wind speed bin edges
     """
+    df_copy = df.copy()
+    #  Create bins in the dataframe
+    df_copy['ws_bin'] = pd.cut(df_copy['Wsp_44m'], bins=ws_bins, include_lowest=True, right=False)
+
+    # Group by the bins and calculate means for every column in the df
+    for col in df_copy.columns:
+        if col != 'ws_bin':
+            df_copy[col] = df_copy.groupby('ws_bin')[col].transform(lambda x: x.fillna(x.mean()))
     
-    # Create a figure with two subplots
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-
-    # First subplot: Power curve (Active Power vs Wind Speed)
-    axes[0].scatter(df_loads['Wsp_44m'], df_loads['po'], alpha=0.5, s=10)
-    axes[0].set_title('Power Curve - Normal Operation Assessment')
-    axes[0].set_xlabel('Wind Speed at 44m [m/s]')
-    axes[0].set_ylabel('Mean Active Power [kW]')
-    axes[0].grid(True, linestyle='--', alpha=0.7)
-
-    # Second subplot: Rotor Speed vs Wind Speed
-    axes[1].scatter(df_loads['ROT'], df_loads['po'], alpha=0.5, s=10)
-    axes[1].set_title('Power vs Rotor Speed')
-    axes[1].set_ylabel('Mean Active Power [kW]')
-    axes[1].set_xlabel('Rotor Speed [rpm]')
-    axes[1].grid(True, linestyle='--', alpha=0.7)
-
-    plt.tight_layout()
-
-    # save the figure 
-    pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures')
-    save_path = os.path.join(pictures_dir, f'{title}.png')
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.savefig(save_path)        
-
-    if show_plot == True:
-        plt.show()
-    else:
-        plt.close()
-
+    df_binned = df_copy
 
     
-    
+    return df_binned
