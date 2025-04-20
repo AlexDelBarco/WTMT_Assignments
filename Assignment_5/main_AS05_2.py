@@ -45,7 +45,7 @@ for tms in timeseries:
         for s in s_litst:
 
             # Compute DEL for each signal and m
-            del_value = fn.compute_del(timeseries_dict[tms][s], f_s_Q521, m)
+            del_value, signal = fn.compute_del(timeseries_dict[tms][s], f_s_Q521, m)
             results_DEL[tms][f"{s}_m{m}"] = del_value
 
 #%% Q5.2.2 

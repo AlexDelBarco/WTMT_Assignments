@@ -50,7 +50,7 @@ def compute_del(s, f_s, m):
     T = len(signal) / f_s  # Total duration of the signal in seconds
     DEL = (damage / T) ** (1 / m)
 
-    return DEL
+    return DEL, signal
 
 
 def load_csv_with_units(file_path):
