@@ -458,8 +458,9 @@ df_loads = fn.filter_outliers_row_based(df_loads, ['Wdir_41m'],
 
 # 7. Bin your filtered database into wind speed bins of 1 m/s width 
 
+
 #  Calculate binned statistics
-df_binned_means = fn.bin_data_by_windspeed(df_loads, ws_col='Wsp_44m', bin_width=1.0)
+df_binned = fn.bin_data_by_windspeed(df_loads, ws_col='Wsp_44m', bin_width=1.0)
 
 # Check the results
 # if not df_binned_means.empty:
@@ -470,31 +471,174 @@ df_binned_means = fn.bin_data_by_windspeed(df_loads, ws_col='Wsp_44m', bin_width
 
 
 # Save results to CSV (optional)
-df_binned_means.to_csv('binned_means_statistics.csv', float_format='%.3f', index=False)
+df_binned.to_csv('binned_means_statistics.csv', float_format='%.3f', index=False)
 print("\nSaved binned means to 'binned_means_statistics.csv'")
 # else:
 #     print("\nBinning failed or resulted in an empty DataFrame.")
-print(df_binned_means['Wsp_44m_mean'])
+print(df_binned.columns)
+ws_bins = ws_bins_np = np.arange(4, 19) # 
+# print(f'ws_bins: {ws_bins}')
+# print(f'length of ws_bins : {len(ws_bins)}')
+# print(f'length of df_binned: {len(df_binned)}')
+df_binned['ws_bin'] = ws_bins
 
 
-# #  Save results to CSV
-# df_binned.to_csv('binned_statistics_5.1.csv', float_format='%.3f')
-
-# print(df_binned['Wsp_44m'])
-# print(df_binned['ws_bin'])
-      
-
-# fn.plot_scatter('Binned Wind Speed vs Wind speed', df_binned['Wsp_44m'], df_binned['ws_bin'],
-                # 'Wind Speed', 'Binned Wind Speed [m/s]', 'Wind Speed [m/s]', True, dot_size1 = 50)
+# fn.plot_scatter('Binned Wind Speed vs Wind speed', df_binned['Wsp_44m_mean'], df_binned['ws_bin'],
+#                 'Wind Speed', 'Binned Wind Speed [m/s]', 'Wind Speed [m/s]', True, dot_size1 = 50)
 
 
 # %% QUESTION 3: LOAD VISUALIZATION
 
-# 8. For each structural load channel (marked with yellow in Table 5.1-1), create a 2x1 subplot 
-#    figure.  
+# 8. For each structural load channel (all channels except these:
+#  ws_bin_intervals', 'count', 'Wsp_44m_mean', 'Wdir_41m_mean','ROT_mean', 
+# 'yaw_mean', 'pa_mean', 'po_mean', 'wsn_mean', ), 
+# create a 2x1 subplot figure.  
 #    a. In the top graph, plot as function of Wsp_44m, the load channel's  
 #       i. 10-min maximum values, and its bin averages 
 #       ii. 10-min mean, and its bin averages 
 #       iii. 10-min minimum, and its bin averages 
 #    b. In the bottom graph, plot the 10-min standard deviation values and its bin averages. 
 #    In total, ten 2x1 subplot figures are expected.
+
+# ... previous code ...
+
+# %% QUESTION 3: LOAD VISUALIZATION
+
+# 8. For each structural load channel (all channels except these:
+#  ws_bin_intervals', 'count', 'Wsp_44m_mean', 'Wdir_41m_mean','ROT_mean',
+# 'yaw_mean', 'pa_mean', 'po_mean', 'wsn_mean', ),
+# create a 2x1 subplot figure.
+#    a. In the top graph, plot as function of Wsp_44m, the load channel's
+#       i. 10-min maximum values, and its bin averages
+#       ii. 10-min mean, and its bin averages
+#       iii. 10-min minimum, and its bin averages
+#    b. In the bottom graph, plot the 10-min standard deviation values and its bin averages.
+#    In total, ten 2x1 subplot figures are expected.
+
+print("\n--- Generating Load Visualization Plots (Q3) ---")
+
+# Define columns that are NOT structural load channels (based on Q3 instructions)
+# These include operational signals and columns added during binning
+exclude_cols_binned = [
+    'ws_bin_intervals', 'count', 'Wsp_44m_mean', # Binning & WS itself
+    'Wdir_41m_mean', 'ROT_mean', 'yaw_mean', 'pa_mean', 'po_mean', 'wsn_mean', # Operational signals (means of)
+    'ws_bin' # Manually added columns (adjust if names differ)
+]
+
+# Identify base load channel names automatically from df_binned columns
+load_channel_bases = set()
+stats_suffixes = ['_mean', '_stdev', '_min', '_max'] # Original statistics suffixes
+
+print("Identifying load channels from df_binned columns...")
+for binned_col in df_binned.columns:
+    # Skip columns explicitly excluded
+    if binned_col in exclude_cols_binned:
+        continue
+
+    # Check if the column name ends with '_mean' (indicating it's a binned average)
+    if binned_col.endswith('_mean'):
+        # Remove the trailing '_mean' to get the original statistic column name
+        original_stat_col = binned_col[:-len('_mean')]
+
+        # Check if this original stat column name ends with one of the expected suffixes
+        for suffix in stats_suffixes:
+            if original_stat_col.endswith(suffix):
+                # Extract the base name by removing the stat suffix
+                base_name = original_stat_col[:-len(suffix)]
+                load_channel_bases.add(base_name)
+                # print(f"  Found base: {base_name} from {binned_col}") # Debug print
+                break # Move to the next binned_col once a base is found
+
+# Convert set to sorted list for consistent order
+plot_bases = sorted(list(load_channel_bases))
+print(f"Identified load channel bases for plotting: {plot_bases}")
+print(f"Total plots expected: {len(plot_bases)}")
+
+# Create directory for saving plots if it doesn't exist
+pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures', 'Load_Plots_Q3')
+os.makedirs(pictures_dir, exist_ok=True)
+print(f"Saving plots to: {pictures_dir}")
+
+# Loop through the identified load channel bases
+for base_name in plot_bases:
+    print(f"  Generating plot for: {base_name}")
+
+    # Define column names for the original 10-min stats in df_loads
+    mean_col = f"{base_name}_mean"
+    min_col = f"{base_name}_min"
+    max_col = f"{base_name}_max"
+    stdev_col = f"{base_name}_stdev"
+
+    # Define corresponding binned column names (mean of the stat) in df_binned
+    binned_mean_col = f"{mean_col}_mean"
+    binned_min_col = f"{min_col}_mean"
+    binned_max_col = f"{max_col}_mean"
+    binned_stdev_col = f"{stdev_col}_mean"
+
+    # --- Data Validation ---
+    # Check if all required 10-min columns exist in df_loads (filtered data)
+    required_load_cols = [mean_col, min_col, max_col, stdev_col]
+    if not all(col in df_loads.columns for col in required_load_cols):
+        print(f"    Skipping {base_name}: Missing one or more 10-min columns in df_loads: {required_load_cols}")
+        continue
+
+    # Check if all required binned columns exist in df_binned
+    required_binned_cols = [binned_mean_col, binned_min_col, binned_max_col, binned_stdev_col]
+    if not all(col in df_binned.columns for col in required_binned_cols):
+        print(f"    Skipping {base_name}: Missing one or more binned columns in df_binned: {required_binned_cols}")
+        continue
+
+    # Get units (assuming unit is same for mean, min, max, stdev of a channel)
+    # Use the original column name (e.g., MyTB_mean) to look up the unit
+    unit = column_units.get(mean_col, '') # Get unit from the mean column
+
+    # --- Create Figure ---
+    fig, axes = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+    fig.suptitle(f'Load Analysis: {base_name} ({unit}) vs Wind Speed', fontsize=16)
+
+    # --- Top Subplot (Mean, Min, Max) ---
+    ax = axes[0]
+    # Plot 10-min data (scatter) - use df_loads (filtered data)
+    ax.scatter(df_loads['Wsp_44m'], df_loads[max_col], alpha=0.15, s=8, label=f'10-min Max', color='salmon')
+    ax.scatter(df_loads['Wsp_44m'], df_loads[mean_col], alpha=0.15, s=8, label=f'10-min Mean', color='lightblue')
+    ax.scatter(df_loads['Wsp_44m'], df_loads[min_col], alpha=0.15, s=8, label=f'10-min Min', color='lightgreen')
+
+    # Plot binned averages (lines/markers) - use df_binned
+    ax.plot(df_binned['ws_bin_center'], df_binned[binned_max_col], marker='^', linestyle='-', color='red', label='Binned Max Avg', markersize=5)
+    ax.plot(df_binned['ws_bin_center'], df_binned[binned_mean_col], marker='o', linestyle='-', color='blue', label='Binned Mean Avg', markersize=5)
+    ax.plot(df_binned['ws_bin_center'], df_binned[binned_min_col], marker='v', linestyle='-', color='green', label='Binned Min Avg', markersize=5)
+
+    ax.set_ylabel(f'Load ({unit})')
+    ax.set_title('Mean, Min, Max Load')
+    ax.legend(fontsize='small', loc='best')
+    ax.grid(True, linestyle='--', alpha=0.6)
+
+    # --- Bottom Subplot (Standard Deviation) ---
+    ax = axes[1]
+    # Plot 10-min data (scatter) - use df_loads
+    ax.scatter(df_loads['Wsp_44m'], df_loads[stdev_col], alpha=0.15, s=8, label=f'10-min StDev', color='plum')
+
+    # Plot binned averages (lines/markers) - use df_binned
+    ax.plot(df_binned['ws_bin_center'], df_binned[binned_stdev_col], marker='s', linestyle='-', color='purple', label='Binned StDev Avg', markersize=5)
+
+    ax.set_xlabel('Wind Speed (m/s)')
+    ax.set_ylabel(f'Standard Deviation ({unit})')
+    # ax.set_title('Standard Deviation') # Title might be redundant with y-label
+    ax.legend(fontsize='small', loc='best')
+    ax.grid(True, linestyle='--', alpha=0.6)
+
+    # --- Finalize ---
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # Adjust layout to prevent title overlap
+
+    # Save the figure
+    save_path = os.path.join(pictures_dir, f'Load_Plot_{base_name}.png')
+    try:
+        plt.savefig(save_path)
+        # print(f"    Saved plot: {save_path}")
+    except Exception as e:
+        print(f"    Error saving plot {save_path}: {e}")
+    plt.close(fig) # Close the figure to free memory
+
+print("\nFinished generating load plots for Q3.")
+
+# ... rest of the code ...

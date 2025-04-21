@@ -672,7 +672,7 @@ def bin_data_by_windspeed(df, ws_col='Wsp_44m', bin_width=1.0):
 
     # Rename the specific columns for clarity
     ws_col_count_name = f'{ws_col}_count'
-    ws_col_mean_name = f'{ws_col}_mean'
+    ws_col_mean_name = f'{ws_col}'
     df_binned = df_binned.rename(columns={
         ws_col_count_name: 'count',
         ws_col_mean_name: ws_col_mean_name
