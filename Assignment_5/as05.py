@@ -480,7 +480,7 @@ ws_bins = ws_bins_np = np.arange(4, 19) #
 # print(f'ws_bins: {ws_bins}')
 # print(f'length of ws_bins : {len(ws_bins)}')
 # print(f'length of df_binned: {len(df_binned)}')
-df_binned['ws_bin'] = ws_bins
+df_binned['ws_bin_center'] = ws_bins
 
 
 # fn.plot_scatter('Binned Wind Speed vs Wind speed', df_binned['Wsp_44m_mean'], df_binned['ws_bin'],
@@ -587,6 +587,17 @@ for base_name in plot_bases:
     if not all(col in df_binned.columns for col in required_binned_cols):
         print(f"    Skipping {base_name}: Missing one or more binned columns in df_binned: {required_binned_cols}")
         continue
+
+    # --- ADD THIS CHECK ---
+    # Check if df_binned is usable for plotting (not empty and has bin centers)
+    if df_binned.empty:
+        print(f"    Skipping {base_name}: Binned DataFrame (df_binned) is empty.")
+        continue
+    if 'ws_bin_center' not in df_binned.columns:
+        print(f"    Skipping {base_name}: 'ws_bin_center' column is missing in df_binned. Cannot plot binned averages.")
+        # Optionally, you could plot only the 10-min data here, but skipping is safer
+        continue
+    # --- END OF ADDED CHECK ---
 
     # Get units (assuming unit is same for mean, min, max, stdev of a channel)
     # Use the original column name (e.g., MyTB_mean) to look up the unit
