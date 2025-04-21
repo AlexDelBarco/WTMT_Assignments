@@ -50,24 +50,23 @@ for tms in timeseries:
 
 #%% Q5.2.2 
 
-# Importing statistical data
+# Importing cleaned statistical data from Q1
 
-#USE THE CLEAN LOAD_STATE FROM Q1
+from as05 import df_loads
 
-load_stats = fn.load_csv_with_units('46400_AS05_Loads_stats_Spring2025.csv')
-load_stats.rename(columns={"rname_[-]": "time"}, inplace=True)
-load_stats['time'] = pd.to_datetime(load_stats['time'], format='%Y%m%d%H%M')
+load_stats = df_loads.copy()
+load_stats = load_stats.rename(columns={'rname': 'time'})
 
 # Load Statics of timeseries' timestamps
 
-timestamps = []
+#timestamps = []
 
-for tms in timeseries:
+#for tms in timeseries:
 
-    timestamp = pd.to_datetime(tms, format='%Y%m%d%H%M')
-    timestamps.append(timestamp)
+    #timestamp = pd.to_datetime(tms, format='%Y%m%d%H%M')
+    #timestamps.append(timestamp)
 
-load_stats_tms = load_stats[load_stats['time'].isin(timestamps)]
+load_stats_tms = load_stats[load_stats['time'].isin(timeseries)]
 
 # Replace new computed values of DEL 
 
@@ -79,12 +78,14 @@ load_stats_updated.update(load_stats_tms_updated)
 
 #a)
 
-fn.plot_sig(load_stats_updated, 'Wsp_44m_[m/s]', ['MxA1_DEL12_[kNm]', 'MyA1_DEL12_[kNm]'], 
-           title='MxA1 DEL for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
+fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MxA1_DEL12', 'MyA1_DEL12'], 
+           title='MxA1 and MyA1  DEL for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
 
 #b)
-fn.plot_sig(load_stats_updated, 'Wsp_44m_[m/s]', ['MyTB_DEL3_[kNm]', 'MxTB_DEL3_[kNm]', 'MzTT_DEL3_[kNm]', 'Myaw_DEL3_[kNm]', 'Mtilt_DEL3_[kNm]', 'MzR_DEL3_[kNm]', 'MyR_DEL3_[kNm]', 'MxR_DEL3_[kNm]', 'MyA1_DEL3_[kNm]', 'MxA1_DEL3_[kNm]'], 
-           title='Signals DEL values for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
+#fn.plot_sig(load_stats_updated, 'Wsp_44m', ['MyTB_DEL3', 'MxTB_DEL3', 'MzTT_DEL3', 'Myaw_DEL3', 'Mtilt_DEL3', 'MzR_DEL3', 'MyR_DEL3', 'MxR_DEL3', 'MyA1_DEL3', 'MxA1_DEL3'], 
+      #     title='Signals DEL values for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
 
 
 
+
+# %%

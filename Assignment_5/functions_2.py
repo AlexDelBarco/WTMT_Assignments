@@ -85,7 +85,7 @@ def replace_load_stats_with_results(load_stats_tms, results_DEL):
             # Extract the signal name (e.g., MyTB, MxTB, etc.) and Wohler exponent (e.g., 3, 6, 9, 12)
             signal_name = col.split("DEL")[0].strip()
             signal_name = signal_name.replace("_", "")  # Remove any spaces
-            print(f"Signal name: {signal_name}")
+            #print(f"Signal name: {signal_name}")
 
             if signal_name == "Myaw":
                 signal_name = "MYaw"
@@ -104,8 +104,8 @@ def replace_load_stats_with_results(load_stats_tms, results_DEL):
 
             # Iterate over the rows in load_stats_tms
             for index, row in df.iterrows():
-                # Convert the timestamp in the "time" column to match the key in results_DEL
-                timestamp_key = row["time"].strftime("%Y%m%d%H%M")
+                # Extract the timestamp key from the current row
+                timestamp_key = row["time"]
 
                 # Check if the timestamp_key and signal_name exist in results_DEL
                 if timestamp_key in results_DEL and f"{signal_name}_m{wohler_exponent}" in results_DEL[timestamp_key]:
@@ -156,6 +156,55 @@ def plot_sig(df, x_column, y_columns, title, show_plot=True, x_label=None, y_lab
     plt.grid(True)
 
     plt.savefig(f'Figures/{title}.png', dpi=300, bbox_inches='tight')
+
+    # Show the plot if required
+    if show_plot:
+        plt.show()
+    else:
+        plt.close()
+
+
+def plot_sig_scatter(df, x_column, y_columns, title, show_plot=True, x_label=None, y_label=None):
+    """
+    Plot specified columns from a dataframe against a given x-axis column as a scatter plot.
+
+    Parameters:
+    df (pd.DataFrame): The dataframe containing the data to plot.
+    x_column (str): The name of the column to use for the x-axis.
+    y_columns (list or str): A list of column names (or a single column name) to plot on the y-axis.
+    title (str): The title of the plot.
+    save_path (str, optional): Path to save the plot as an image. If None, the plot is not saved.
+    show_plot (bool, optional): Whether to display the plot. Default is True.
+
+    Returns:
+    None
+    """
+    # Ensure y_columns is a list, even if a single column is passed
+    if isinstance(y_columns, str):
+        y_columns = [y_columns]
+
+    if x_column not in df.columns:
+        print(f"Error: Column '{x_column}' not found in the dataframe.")
+        return
+
+    for y_column in y_columns:
+        if y_column not in df.columns:
+            print(f"Error: Column '{y_column}' not found in the dataframe.")
+            return
+
+    # Create the scatter plot
+    plt.figure(figsize=(10, 6))
+    for y_column in y_columns:
+        plt.scatter(df[x_column], df[y_column], label=y_column)
+
+    # Add labels, title, and legend
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+
+    plt.savefig(f'Figures/{title}_scatter.png', dpi=300, bbox_inches='tight')
 
     # Show the plot if required
     if show_plot:
