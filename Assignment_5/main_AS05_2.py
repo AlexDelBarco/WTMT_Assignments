@@ -83,20 +83,20 @@ fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MxA1_DEL12', 'MyA1_DEL12'],
 #%%
 #b)
 #Blade root
+fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MxA1_DEL3', 'MyA1_DEL3'], 
+           title='DEL of MxA1 and MyA1, m=3 vs WS at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
 
-#Bending shaft moment
-
-#Shaft torque
+#Bending shaft moment and shat torque
+fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MzR_DEL3', 'MyR_DEL3', 'MxR_DEL3'], 
+           title='DEL of MxR, MyR and MzR, m=3 vs WS at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
 
 #Derived tilt moment
+fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['Myaw_DEL3', 'Mtilt_DEL3'], 
+           title='DEL of Mtilts and Myaw, m=3 vs WS at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
 
-#Tower tpo torsion
+#Tower top and bottom torsion
+fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MyTB_DEL3', 'MxTB_DEL3', 'MzTT_DEL3'], 
+           title='DEL of MzTT, MxTB and MyTB, m=3 vs WS at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
 
-#Tower bottom bending
-fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MyTB_DEL3', 'MxTB_DEL3', 'MzTT_DEL3', 'Myaw_DEL3', 'Mtilt_DEL3', 'MzR_DEL3', 'MyR_DEL3', 'MxR_DEL3', 'MyA1_DEL3', 'MxA1_DEL3'], 
-           title='Signals DEL values for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
-
-
-
-
-# %%
+#fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MyTB_DEL3', 'MxTB_DEL3', 'MzTT_DEL3', 'Myaw_DEL3', 'Mtilt_DEL3', 'MzR_DEL3', 'MyR_DEL3', 'MxR_DEL3', 'MyA1_DEL3', 'MxA1_DEL3'], 
+      #     title='Signals DEL values for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
