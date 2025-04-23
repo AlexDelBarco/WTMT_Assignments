@@ -100,3 +100,6 @@ fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MyTB_DEL3', 'MxTB_DEL3', 'M
 
 #fn.plot_sig_scatter(load_stats_updated, 'Wsp_44m', ['MyTB_DEL3', 'MxTB_DEL3', 'MzTT_DEL3', 'Myaw_DEL3', 'Mtilt_DEL3', 'MzR_DEL3', 'MyR_DEL3', 'MxR_DEL3', 'MyA1_DEL3', 'MxA1_DEL3'], 
       #     title='Signals DEL values for Wohler exponent 3 as a funtion of Wind speed at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
+
+#c)
+
