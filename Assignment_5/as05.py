@@ -652,4 +652,265 @@ for base_name in plot_bases:
 
 print("\nFinished generating load plots for Q3.")
 
-# ... rest of the code ...
+# Q5.1.2 Load Signal Interpretation and Calibration Analysis
+
+# --- MyA1 Trend & Calibration Analysis ---
+
+# Check if mean/stdev/min/max of MyA1 show similar trends
+# -> Also plot 10-min range (max-min) vs wind speed
+# %% QUESTION 5: LOAD INTERPRETATION AND CALIBRATION
+print("\n--- Q5.1.2: MyA1 Trend & Calibration Analysis ---")
+
+# Create directory for Q5 plots
+q5_pictures_dir = os.path.join(os.path.dirname(__file__), 'Pictures', 'Q5_Analysis')
+os.makedirs(q5_pictures_dir, exist_ok=True)
+print(f"Saving Q5 plots to: {q5_pictures_dir}")
+
+# --- 1. Calculate MyA1 range (max-min) ---
+myA1_min_col = 'MyA1_min'
+myA1_max_col = 'MyA1_max'
+myA1_mean_col = 'MyA1_mean'
+myA1_stdev_col = 'MyA1_stdev'
+
+if myA1_min_col in df_loads.columns and myA1_max_col in df_loads.columns:
+    # Calculate the range (max-min)
+    df_loads['MyA1_range'] = df_loads[myA1_max_col] - df_loads[myA1_min_col]
+    print(f"Calculated MyA1 range column")
+    
+    # --- 2. Plot MyA1 Range vs Wind Speed ---
+    plt.figure(figsize=(12, 7))
+    plt.scatter(df_loads['Wsp_44m'], df_loads['MyA1_range'], alpha=0.3, s=10, label='10-min Range')
+    
+    # Add binned averages if available
+    # First, we need to make sure the binned data includes the range
+    if not df_binned.empty and 'ws_bin_center' in df_binned.columns:
+        # Calculate binned statistics for the range
+        range_bins = {}
+        for bin_center in df_binned['ws_bin_center'].unique():
+            # Find ranges for data points in this wind speed bin
+            mask = (df_loads['Wsp_44m'] >= bin_center - 0.5) & (df_loads['Wsp_44m'] < bin_center + 0.5)
+            bin_ranges = df_loads.loc[mask, 'MyA1_range']
+            if not bin_ranges.empty:
+                range_bins[bin_center] = bin_ranges.mean()
+        
+        # Plot the binned ranges
+        bin_centers = list(range_bins.keys())
+        bin_ranges = list(range_bins.values())
+        plt.plot(bin_centers, bin_ranges, 'ro-', linewidth=2, markersize=8, label='Binned Average')
+    
+    unit = column_units.get(myA1_min_col, '')
+    plt.xlabel('Wind Speed (m/s)')
+    plt.ylabel(f'MyA1 Range ({unit})')
+    plt.title('MyA1 Range (Max-Min) vs Wind Speed')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Range_vs_WindSpeed.png'))
+    plt.close()
+    
+    # --- 3. Plot MyA1 Mean vs Wind Speed (colored by time) ---
+    plt.figure(figsize=(12, 7))
+    
+    # Convert datetime to a numeric value for color mapping
+    time_values = mdates.date2num(df_loads['datetime'])
+    
+    # Create scatter plot colored by time
+    scatter = plt.scatter(df_loads['Wsp_44m'], df_loads[myA1_mean_col], 
+                         c=time_values, cmap='viridis', alpha=0.6, s=15)
+    
+    plt.xlabel('Wind Speed (m/s)')
+    plt.ylabel(f'MyA1 Mean ({unit})')
+    plt.title('MyA1 Mean vs Wind Speed (Colored by Date)')
+    plt.grid(True, alpha=0.3)
+    
+    # Add a colorbar with date formatting
+    cbar = plt.colorbar(scatter)
+    cbar.set_label('Date')
+    
+    # Format colorbar ticks as dates
+    cbar_ticks = cbar.get_ticks()
+    cbar.set_ticks(cbar_ticks)
+    date_labels = [mdates.num2date(tick).strftime('%Y-%m-%d') for tick in cbar_ticks]
+    cbar.set_ticklabels(date_labels)
+    
+    plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Mean_vs_WindSpeed_ColorByTime.png'))
+    plt.close()
+    
+    # --- 4. Plot all MyA1 statistics vs Wind Speed (IMPROVED) ---
+    plt.figure(figsize=(12, 8))
+
+    # Use more distinct colors and larger markers with higher opacity
+    plt.scatter(df_loads['Wsp_44m'], df_loads[myA1_max_col], 
+                alpha=0.4, s=15, color='crimson', label='Max')
+    plt.scatter(df_loads['Wsp_44m'], df_loads[myA1_mean_col], 
+                alpha=0.4, s=15, color='royalblue', label='Mean')
+    plt.scatter(df_loads['Wsp_44m'], df_loads[myA1_min_col], 
+                alpha=0.4, s=15, color='forestgreen', label='Min')
+    plt.scatter(df_loads['Wsp_44m'], df_loads[myA1_stdev_col], 
+                alpha=0.4, s=15, color='darkorchid', label='StDev')
+
+    plt.xlabel('Wind Speed (m/s)', fontsize=12)
+    plt.ylabel(f'MyA1 Values ({unit})', fontsize=12)
+    plt.title('MyA1 Statistics vs Wind Speed', fontsize=14)
+    plt.grid(True, alpha=0.3)
+
+    # Create a more visible legend
+    legend = plt.legend(fontsize=12, 
+                       markerscale=3,        # Make legend markers larger
+                       frameon=True,         # Add a frame
+                       fancybox=True,        # Round the corners
+                       framealpha=1.0,       # No transparency in frame
+                       edgecolor='black',    # Black edge around legend
+                       loc='upper right')    # Position in upper right
+
+    # Set the legend marker alpha to 1.0 (fully opaque)
+    for handle in legend.legend_handles :
+        handle.set_alpha(1.0)
+
+    plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Stats_vs_WindSpeed.png'), dpi=300)
+    plt.close()
+    
+    print("Created MyA1 vs Wind Speed plots")
+    
+else:
+    print(f"Cannot analyze MyA1: Required columns not found in data")
+
+
+# Add code to identify different calibration periods
+print("\n--- Identifying MyA1 Calibration Shifts ---")
+
+# Step 1: Create groups based on MyA1 mean values at similar wind speeds
+# Focus on moderate wind speeds where there's good data density (e.g., 8-12 m/s)
+wind_filter = (df_loads['Wsp_44m'] >= 8) & (df_loads['Wsp_44m'] <= 12)
+df_calibration = df_loads[wind_filter].copy()
+
+# Step 2: Use clustering to identify the vertical bands
+from sklearn.cluster import KMeans
+# Extract features for clustering (just the MyA1 value)
+X = df_calibration[['MyA1_mean']].values
+# Try with 3 clusters initially (adjust based on visual inspection)
+kmeans = KMeans(n_clusters=3, random_state=42)
+df_calibration['cluster'] = kmeans.fit_predict(X)
+
+# Step 3: Get date ranges for each cluster
+print("\nIdentified calibration periods:")
+for cluster_id in sorted(df_calibration['cluster'].unique()):
+    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
+    min_date = cluster_data['datetime'].min()
+    max_date = cluster_data['datetime'].max()
+    avg_value = cluster_data['MyA1_mean'].mean()
+    
+    print(f"Calibration Group {cluster_id+1}:")
+    print(f"  Date Range: {min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
+    print(f"  Average MyA1 value: {avg_value:.2f} kNm")
+    print(f"  Number of measurements: {len(cluster_data)}")
+    print(f"  Vertical offset from overall mean: {avg_value - df_calibration['MyA1_mean'].mean():.2f} kNm\n")
+
+# Step 4: Visualize the clusters
+plt.figure(figsize=(12, 8))
+colors = ['crimson', 'royalblue', 'forestgreen']
+markers = ['o', 's', '^']
+
+for cluster_id in sorted(df_calibration['cluster'].unique()):
+    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
+    plt.scatter(cluster_data['Wsp_44m'], cluster_data['MyA1_mean'], 
+                alpha=0.6, s=20, 
+                color=colors[cluster_id % len(colors)],
+                marker=markers[cluster_id % len(markers)],
+                label=f'Group {cluster_id+1} ({cluster_data["datetime"].min().strftime("%Y-%m-%d")} - {cluster_data["datetime"].max().strftime("%Y-%m-%d")})')
+
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel(f'MyA1 Mean ({column_units.get("MyA1_mean", "kNm")})', fontsize=12)
+plt.title('MyA1 Calibration Groups', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.legend(fontsize=10)
+plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Calibration_Groups.png'), dpi=300)
+plt.close()
+
+
+# Calculate corrected calibration offsets
+print("\n--- Calculating Corrected Calibration Values ---")
+
+# Assume the most recent group has the correct calibration
+# Or choose a reference group (e.g., the one with the most data points)
+reference_group_id = df_calibration.groupby('cluster').size().idxmax()
+reference_mean = df_calibration[df_calibration['cluster'] == reference_group_id]['MyA1_mean'].mean()
+
+original_gain = 763.4
+original_offset = 312.8
+
+print(f"Using Group {reference_group_id+1} as reference calibration")
+print(f"Original calibration: Gain = {original_gain}, Offset = {original_offset}")
+print("\nSuggested calibration values:")
+
+for cluster_id in sorted(df_calibration['cluster'].unique()):
+    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
+    cluster_mean = cluster_data['MyA1_mean'].mean()
+    
+    # Calculate offset difference
+    offset_diff = cluster_mean - reference_mean
+    corrected_offset = original_offset - offset_diff
+    
+    min_date = cluster_data['datetime'].min().strftime('%Y-%m-%d')
+    max_date = cluster_data['datetime'].max().strftime('%Y-%m-%d')
+    
+    print(f"Group {cluster_id+1} ({min_date} to {max_date}):")
+    print(f"  Gain = {original_gain} (unchanged)")
+    print(f"  Offset = {corrected_offset:.1f}")
+    
+    # Calculate and show a few sample conversions
+    print(f"  Example conversions at 10 m/s:")
+    original_value = cluster_data[cluster_data['Wsp_44m'].between(9.8, 10.2)]['MyA1_mean'].mean()
+    corrected_value = reference_mean # This would be the expected value after correction
+    print(f"    Original reading: {original_value:.2f} kNm")
+    print(f"    Corrected reading: {corrected_value:.2f} kNm\n")
+
+# Create a visualization of the correction
+plt.figure(figsize=(14, 8))
+
+# Plot original data with cluster colors
+for cluster_id in sorted(df_calibration['cluster'].unique()):
+    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
+    plt.scatter(cluster_data['Wsp_44m'], cluster_data['MyA1_mean'], 
+                alpha=0.4, s=15, color=colors[cluster_id % len(colors)],
+                label=f'Original Group {cluster_id+1}')
+    
+    # Calculate and plot corrected values
+    offset_diff = cluster_data['MyA1_mean'].mean() - reference_mean
+    cluster_data['corrected_MyA1'] = cluster_data['MyA1_mean'] - offset_diff
+    plt.scatter(cluster_data['Wsp_44m'], cluster_data['corrected_MyA1'], 
+                alpha=0.4, s=15, marker='x', color=colors[cluster_id % len(colors)],
+                label=f'Corrected Group {cluster_id+1}')
+
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel(f'MyA1 Mean ({column_units.get("MyA1_mean", "kNm")})', fontsize=12)
+plt.title('MyA1 Original vs Corrected Values', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.legend(fontsize=10)
+plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Calibration_Correction.png'), dpi=300)
+plt.close()
+# Look into possible reasons for multiple MyA1 levels
+
+# Plot MyA1 over time (or color by time in stat vs wsp) to observe evolution
+
+# Same calibration used for all: Gain=763.4, Offset=312.8
+# -> Identify subsets where calibration may have changed
+# -> Figure out if Gain or Offset changed, suggest new values
+
+# --- Cross-checks ---
+
+# Use electrical power (PO) to verify main shaft torque (MzR)
+
+# --- Tower Bottom Moments ---
+
+# MxTB and MyTB: large scatter
+# -> Analyze vs wind direction
+# -> Try transforming into new signals with less scatter
+
+# --- Rotor Tilt Moment ---
+
+# Check how Mtilt correlates with other loads
+# -> Look at zero-loading behavior at low wind speeds
+
+# --- Tower Top Torsion ---
+
+# Check what MzTT correlates with — yaw or tilt moment?
