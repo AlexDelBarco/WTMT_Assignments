@@ -195,7 +195,7 @@ def plot_sig_scatter(df, x_column, y_columns, title, show_plot=True, x_label=Non
     # Create the scatter plot
     plt.figure(figsize=(10, 6))
     for y_column in y_columns:
-        plt.scatter(df[x_column], df[y_column], label=y_column)
+        plt.scatter(df[x_column], df[y_column], label=y_column, s=10, alpha=0.4)
 
     # Add labels, title, and legend
     plt.xlabel(x_label)
