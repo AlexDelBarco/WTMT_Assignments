@@ -101,12 +101,16 @@ load_stats_updated.update(load_stats_tms_updated)
 #%% c) Inspect 201703011200 at t=270 for MxTB Check  how  other  load  signals, 
 #  operational  or  environmental conditions are changing around that time
 
-#index 9448
-
-timeseries_dict['201703011200']
-
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'McTB', title='MxTB signal over time at 2017-03-01 12:00 timeseries'
+# MxTB
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'MxTB', title='MxTB signal over time at 2017-03-01 12:00 timeseries'
                     , show_plot=False, x_label='Time [s]', y_label='MxTB [kNm]')
 
+#Bending shaft moment and shat torque
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'Wsp_44m', ['MzR_DEL3', 'MyR_DEL3', 'MxR_DEL3'], 
+           title='DEL of MxR, MyR and MzR, m=3 vs WS at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
 
 
+
+
+
+# %%
