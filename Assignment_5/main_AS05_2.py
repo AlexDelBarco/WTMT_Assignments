@@ -105,11 +105,21 @@ load_stats_updated.update(load_stats_tms_updated)
 fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'MxTB', title='MxTB signal over time at 2017-03-01 12:00 timeseries'
                     , show_plot=False, x_label='Time [s]', y_label='MxTB [kNm]')
 
+#Blade root
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MxA1', 'MyA1'], title='MxA1, MyA1 signal over time at 2017-03-01 12:00 timeseries'
+                    , show_plot=False, x_label='Time [s]', y_label='[kNm]')
+
 #Bending shaft moment and shat torque
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'Wsp_44m', ['MzR_DEL3', 'MyR_DEL3', 'MxR_DEL3'], 
-           title='DEL of MxR, MyR and MzR, m=3 vs WS at 44m', show_plot=False, x_label='Wind Spped at 44m [m/s]', y_label='DEL [kNm]')
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MzR', 'MyR', 'MxR'], 
+           title='MzR, MyR, MxR signals over time at 2017-03-01 12:00 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
 
+#Derived tilt moment
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MYaw', 'MTilt'], 
+           title='Myaw and Mtilt signals over time at 2017-03-01 12:00 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
 
+#Tower top and bottom torsion
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MyTB', 'MxTB', 'MzTT'], 
+           title='MyTB, MxTB, MzTT signals over time at 2017-03-01 12:00 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
 
 
 
