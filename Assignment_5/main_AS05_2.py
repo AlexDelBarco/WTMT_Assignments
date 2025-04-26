@@ -102,24 +102,24 @@ load_stats_updated.update(load_stats_tms_updated)
 #  operational  or  environmental conditions are changing around that time
 
 # MxTB
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'MxTB', title='MxTB signal over time at 2017-03-01 12:00 timeseries'
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'MxTB', title='MxTB signal over time at 201703011200 timeseries'
                     , show_plot=False, x_label='Time [s]', y_label='MxTB [kNm]')
 
 #Blade root
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MxA1', 'MyA1'], title='MxA1, MyA1 signal over time at 2017-03-01 12:00 timeseries'
+fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MxA1', 'MyA1'], title='MxA1 and MyA1 signals over time at 201703011200 timeseries'
                     , show_plot=False, x_label='Time [s]', y_label='[kNm]')
 
 #Bending shaft moment and shat torque
 fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MzR', 'MyR', 'MxR'], 
-           title='MzR, MyR, MxR signals over time at 2017-03-01 12:00 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
+           title='MzR MyR MxR signals over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
 
 #Derived tilt moment
 fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MYaw', 'MTilt'], 
-           title='Myaw and Mtilt signals over time at 2017-03-01 12:00 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
+           title='Myaw and Mtilt signals over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
 
 #Tower top and bottom torsion
 fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['MyTB', 'MxTB', 'MzTT'], 
-           title='MyTB, MxTB, MzTT signals over time at 2017-03-01 12:00 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
+           title='MyTB MxTB MzTT signals over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='[kNm]')
 
 
 
