@@ -123,20 +123,20 @@ load_stats_updated.update(load_stats_tms_updated)
 
 #wind speed
 
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['ws70', 'ws44', 'ws18'], 
-           title='Wind speed in different height over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Wind Speed [m/s]')
+#fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['ws70', 'ws44', 'ws18'], 
+           #title='Wind speed in different height over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Wind Speed [m/s]')
 
 #Wind direction
 
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['wd70', 'wd41'], 
-           title='Wind direction over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Wind Direction [deg]')
+#fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', ['wd70', 'wd41'], 
+           #title='Wind direction over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Wind Direction [deg]')
 
 # pitch
 
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'PA', 
-           title='Pitch angle over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Pitch Angle [deg]')
+#fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'PA', 
+           #title='Pitch angle over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Pitch Angle [deg]')
 
 # yaw position
 
-fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'NP', 
-           title='Yaw position over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Yaw Position [deg]')
+#fn.plot_sig_scatter(timeseries_dict['201703011200'], 'time', 'NP', 
+           #title='Yaw position over time at 201703011200 timeseries', show_plot=False, x_label='Time [s]', y_label='Yaw Position [deg]')
