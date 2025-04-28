@@ -571,11 +571,8 @@ def plot_lines(title, df1x, df1y, label1, label_x='Time [s]', label_y='Wind Spee
 
 def bin_data_by_windspeed(df, ws_col='Wsp_44m', bin_width=1.0):
     """
-    Bins a DataFrame by a specified wind speed column, centering bins around
-    integer values (or multiples of bin_width/2), and calculates the mean
-    of all other numeric columns within each bin. Also includes the mean of the
-    wind speed column itself for verification.
-
+    Bins a DataFrame by a specified wind speed column using fixed bins from 4-19 m/s.
+    
     Parameters:
     -----------
     df : pandas.DataFrame
@@ -588,12 +585,16 @@ def bin_data_by_windspeed(df, ws_col='Wsp_44m', bin_width=1.0):
     Returns:
     --------
     pandas.DataFrame
-        A new DataFrame containing the binned statistics (mean values per bin).
-        Includes bin intervals, bin centers (which should be close to integers
-        if bin_width=1.0), count per bin, the mean of the wind speed column
-        (ws_col_mean), and mean values for other numeric columns.
-        Returns an empty DataFrame if input is empty or ws_col is invalid.
+        A DataFrame containing the binned statistics with proper bin centers.
     """
+    # Create bins based on actual data range:
+    min_ws_bin = 4  # Start from 4 m/s
+    max_ws_bin = 19  # Go up to 19 to include 18 m/s data
+
+    # Create full range of bins
+    bin_edges = np.arange(min_ws_bin - 0.5, max_ws_bin + 0.5, bin_width)
+    bin_centers = np.arange(min_ws_bin, max_ws_bin, bin_width)
+    
     if df.empty:
         print("Input DataFrame is empty. Returning empty DataFrame.")
         return pd.DataFrame()
@@ -602,99 +603,39 @@ def bin_data_by_windspeed(df, ws_col='Wsp_44m', bin_width=1.0):
         print(f"Error: Wind speed column '{ws_col}' not found in DataFrame. Returning empty DataFrame.")
         return pd.DataFrame()
 
-    if not pd.api.types.is_numeric_dtype(df[ws_col]):
-         print(f"Error: Wind speed column '{ws_col}' must be numeric. Returning empty DataFrame.")
-         return pd.DataFrame()
-
+    # Create bins based on the wind speed column
     df_copy = df.copy()
-
-    # --- Determine Bin Range (Shifted Edges) ---
-    min_val = df_copy[ws_col].min()
-    max_val = df_copy[ws_col].max()
-
-    if pd.isna(min_val) or pd.isna(max_val):
-        print("Error: Could not determine valid min/max for wind speed column. Check for NaNs. Returning empty DataFrame.")
-        return pd.DataFrame()
-
-    # Calculate offset for centering bins
-    offset = bin_width / 2.0
-
-    # Determine the first edge (e.g., if min is 4.1 and width is 1, start at 3.5)
-    start_edge = math.floor(min_val - offset) + offset
-    # Determine the last edge needed (e.g., if max is 18.2 and width is 1, need up to 18.5)
-    # The bin centered at ceil(max_val) would be [ceil(max_val)-offset, ceil(max_val)+offset)
-    # So the final edge needs to be ceil(max_val) + offset
-    end_edge = math.ceil(max_val + offset) - offset # Corrected: ensure last bin covers max_val
-
-    # Generate bin edges using the shifted start and end
-    # Add a small epsilon to end_edge in arange to ensure inclusion due to floating point
-    ws_bins = np.arange(start_edge, end_edge + bin_width, bin_width)
-
-    if len(ws_bins) < 2:
-        print(f"Error: Not enough bins generated with width {bin_width}. Check data range. Returning empty DataFrame.")
-        print(f"Calculated start_edge: {start_edge}, end_edge: {end_edge}")
-        return pd.DataFrame()
-
-    print(f"Generated bin edges (centered): {ws_bins}")
-
-    # --- Binning ---
-    # Create bins based on the wind speed column. right=False means [start, end)
-    df_copy['ws_bin_intervals'] = pd.cut(df_copy[ws_col], bins=ws_bins, right=False, include_lowest=True)
-
-    # --- Dynamic Aggregation ---
-    # Start with count AND mean for the wind speed column itself
+    df_copy['ws_bin_intervals'] = pd.cut(df_copy[ws_col], bins=bin_edges, right=False)
+    
+    # Group by wind speed bins and calculate statistics
     agg_dict = {
-        ws_col: ['count', 'mean'] # Calculate count and mean for the binning column
+        ws_col: ['count', 'mean']  # Count and mean for the binning column
     }
-
-    # Find other numeric columns to aggregate (calculate their mean)
-    other_numeric_cols = df_copy.select_dtypes(include=np.number).columns.tolist()
-    # Remove the primary ws_col as it's handled separately
-    if ws_col in other_numeric_cols:
-        other_numeric_cols.remove(ws_col)
-
-    # Add mean aggregation for these other numeric columns
-    for col in other_numeric_cols:
-        agg_dict[col] = 'mean'
-
-    # --- Grouping and Aggregating ---
-    # Group by the created bins and apply the dynamic aggregations
-    try:
-        # Use observed=False to include all defined bins initially
-        df_binned = df_copy.groupby('ws_bin_intervals', observed=False).agg(agg_dict)
-    except Exception as e:
-        print(f"Error during aggregation: {e}. Returning empty DataFrame.")
-        return pd.DataFrame()
-
-    # --- Formatting Output ---
-    # Flatten the multi-index columns
+    
+    # Add aggregation for other numeric columns (mean)
+    for col in df_copy.select_dtypes(include=np.number).columns:
+        if col != ws_col:
+            agg_dict[col] = 'mean'
+    
+    # Perform the groupby aggregation
+    df_binned = df_copy.groupby('ws_bin_intervals').agg(agg_dict)
+    
+    # Flatten column names
     df_binned.columns = ['_'.join(col).strip('_') for col in df_binned.columns.values]
-
-    # Rename the specific columns for clarity
-    ws_col_count_name = f'{ws_col}_count'
-    ws_col_mean_name = f'{ws_col}'
-    df_binned = df_binned.rename(columns={
-        ws_col_count_name: 'count',
-        ws_col_mean_name: ws_col_mean_name
-    })
-
-    # Filter out bins with zero count AFTER aggregation
-    df_binned = df_binned[df_binned['count'] > 0].copy()
-
-    # Reset index to turn 'ws_bin_intervals' into a regular column
+    
+    # Rename count column for clarity
+    df_binned = df_binned.rename(columns={f'{ws_col}_count': 'count'})
+    
+    # Reset index to convert interval to column
     df_binned = df_binned.reset_index()
-
-    # Calculate bin centers from the interval column
-    if 'ws_bin_intervals' in df_binned.columns and isinstance(df_binned['ws_bin_intervals'].dtype, pd.IntervalDtype):
-         df_binned['ws_bin_center'] = df_binned['ws_bin_intervals'].apply(lambda x: x.mid if pd.notna(x) else np.nan)
-         # Reorder columns (optional)
-         cols_ordered = ['ws_bin_intervals', 'ws_bin_center', 'count', ws_col_mean_name] + \
-                        [col for col in df_binned.columns if col not in ['ws_bin_intervals', 'ws_bin_center', 'count', ws_col_mean_name]]
-         df_binned = df_binned[cols_ordered]
-    else:
-        print("Warning: Could not calculate bin centers. 'ws_bin_intervals' column issue.")
-
-
+    
+    # Calculate bin centers and add column directly
+    if not df_binned.empty:
+        # Add the ws_bin_center column directly using the interval midpoints
+        df_binned['ws_bin_center'] = df_binned['ws_bin_intervals'].apply(lambda x: x.mid)
+    
+    # Filter out empty bins if needed
+    df_binned = df_binned[df_binned['count'] > 0]
+    
     return df_binned
 
-# ... rest of the functions ...

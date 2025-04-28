@@ -99,11 +99,19 @@ print('###################')
 # print(df_loads.describe())
 
 print('filtering ')
+
+CUT_IN = 3.0  # m/s
+CUT_OUT = 25.0  # m/s
+PITCH_MIN = -2.0  # degrees
+PITCH_MAX = 25.0  # degrees
+RATED_POWER = 850.0  # kW
+RATED_ROTOR_SPEED = 26.0  # rpm
+
 # print(df_loads.columns)
 # Wind speed
 df_loads = fn.filter_outliers_row_based(df_loads, ['Wsp_44m'], 
-                                        lower_bound=4.0, 
-                                        upper_bound=35.0, 
+                                        lower_bound=CUT_IN, 
+                                        upper_bound=CUT_OUT, 
                                         parameter='Wind Speed', 
                                         unit='m/s', show_plot=False)
 
@@ -122,14 +130,14 @@ df_loads = fn.filter_outliers_row_based(df_loads, ['yaw'],
                                         unit='degrees', show_plot=False)
 # Pitch angle
 df_loads = fn.filter_outliers_row_based(df_loads, ['pa'],
-                                        lower_bound=-360.0, 
-                                        upper_bound=360.0, 
+                                        lower_bound=PITCH_MIN, 
+                                        upper_bound=PITCH_MAX, 
                                         parameter='Pitch Angle',
                                         unit='degrees', show_plot=False)
 # Mean wind speed nacelle measured
 df_loads = fn.filter_outliers_row_based(df_loads, ['wsn'],
-                                        lower_bound=4, 
-                                        upper_bound=35, 
+                                        lower_bound=CUT_IN, 
+                                        upper_bound=CUT_OUT, 
                                         parameter='Mean Wind Speed Nacelle Measured',
                                         unit='[m/s]', show_plot=False)
 
@@ -145,7 +153,7 @@ df_loads = fn.filter_outliers_row_based(df_loads, ['wsn'],
 # Rotor speed
 df_loads = fn.filter_outliers_row_based(df_loads, ['ROT'],
                                         lower_bound=0, 
-                                        upper_bound=27.0, 
+                                        upper_bound=RATED_ROTOR_SPEED, 
                                         parameter='Rotational Speed',
                                         unit='rpm', show_plot=False)
 
@@ -153,7 +161,7 @@ df_loads = fn.filter_outliers_row_based(df_loads, ['ROT'],
 # Mean active power
 df_loads = fn.filter_outliers_row_based(df_loads, ['po'],
                                         lower_bound=0,
-                                        upper_bound=1e8, 
+                                        upper_bound=RATED_POWER, 
                                         parameter='Mean Active Power',
                                         unit='[kW]', show_plot=False)
 
@@ -444,6 +452,7 @@ for i, name in enumerate(period_names):
 
 # %% 4. As valid measurement sector, consider the reduced [260°;320°) sector. 
 # # Filer out all data outside this sector.
+df_loads_full_sector = df_loads.copy()
 
 df_loads = fn.filter_outliers_row_based(df_loads, ['Wdir_41m'],
                                         lower_bound=260.0, 
@@ -476,11 +485,9 @@ print("\nSaved binned means to 'binned_means_statistics.csv'")
 # else:
 #     print("\nBinning failed or resulted in an empty DataFrame.")
 print(df_binned.columns)
-ws_bins = ws_bins_np = np.arange(4, 19) # 
-# print(f'ws_bins: {ws_bins}')
-# print(f'length of ws_bins : {len(ws_bins)}')
-# print(f'length of df_binned: {len(df_binned)}')
-df_binned['ws_bin_center'] = ws_bins
+
+# Instead of creating bins based only on df_binned length:
+# ws_bins = np.arange(4, 4 + len(df_binned))
 
 
 # fn.plot_scatter('Binned Wind Speed vs Wind speed', df_binned['Wsp_44m_mean'], df_binned['ws_bin'],
@@ -715,7 +722,7 @@ if myA1_min_col in df_loads.columns and myA1_max_col in df_loads.columns:
     
     # Create scatter plot colored by time
     scatter = plt.scatter(df_loads['Wsp_44m'], df_loads[myA1_mean_col], 
-                         c=time_values, cmap='viridis', alpha=0.6, s=15)
+                         c=time_values, cmap='jet', alpha=0.6, s=15, vmin=time_values.min(), vmax=time_values.max())
     
     plt.xlabel('Wind Speed (m/s)')
     plt.ylabel(f'MyA1 Mean ({unit})')
@@ -774,139 +781,799 @@ if myA1_min_col in df_loads.columns and myA1_max_col in df_loads.columns:
 else:
     print(f"Cannot analyze MyA1: Required columns not found in data")
 
-
-# Add code to identify different calibration periods
 print("\n--- Identifying MyA1 Calibration Shifts ---")
+# Create a scatter plot with three distinct time periods instead of color gradient
+plt.figure(figsize=(14, 8))
 
-# Step 1: Create groups based on MyA1 mean values at similar wind speeds
-# Focus on moderate wind speeds where there's good data density (e.g., 8-12 m/s)
-wind_filter = (df_loads['Wsp_44m'] >= 8) & (df_loads['Wsp_44m'] <= 12)
-df_calibration = df_loads[wind_filter].copy()
+# Define the three time periods based on transition dates
+end_date_period1 = pd.to_datetime('2017-05-22')
 
-# Step 2: Use clustering to identify the vertical bands
-from sklearn.cluster import KMeans
-# Extract features for clustering (just the MyA1 value)
-X = df_calibration[['MyA1_mean']].values
-# Try with 3 clusters initially (adjust based on visual inspection)
-kmeans = KMeans(n_clusters=3, random_state=42)
-df_calibration['cluster'] = kmeans.fit_predict(X)
+start_date_period2 = pd.to_datetime('2017-08-09')
+end_date_period2 = pd.to_datetime('2018-04-18')
 
-# Step 3: Get date ranges for each cluster
-print("\nIdentified calibration periods:")
-for cluster_id in sorted(df_calibration['cluster'].unique()):
-    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
-    min_date = cluster_data['datetime'].min()
-    max_date = cluster_data['datetime'].max()
-    avg_value = cluster_data['MyA1_mean'].mean()
-    
-    print(f"Calibration Group {cluster_id+1}:")
-    print(f"  Date Range: {min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
-    print(f"  Average MyA1 value: {avg_value:.2f} kNm")
-    print(f"  Number of measurements: {len(cluster_data)}")
-    print(f"  Vertical offset from overall mean: {avg_value - df_calibration['MyA1_mean'].mean():.2f} kNm\n")
+start_date_period3 = pd.to_datetime('2018-06-19')
 
-# Step 4: Visualize the clusters
-plt.figure(figsize=(12, 8))
-colors = ['crimson', 'royalblue', 'forestgreen']
-markers = ['o', 's', '^']
 
-for cluster_id in sorted(df_calibration['cluster'].unique()):
-    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
-    plt.scatter(cluster_data['Wsp_44m'], cluster_data['MyA1_mean'], 
-                alpha=0.6, s=20, 
-                color=colors[cluster_id % len(colors)],
-                marker=markers[cluster_id % len(markers)],
-                label=f'Group {cluster_id+1} ({cluster_data["datetime"].min().strftime("%Y-%m-%d")} - {cluster_data["datetime"].max().strftime("%Y-%m-%d")})')
+period1_mask = df_loads['datetime'] < pd.to_datetime(end_date_period1)
+period2_mask = (df_loads['datetime'] >= pd.to_datetime(start_date_period2)) & (df_loads['datetime'] < pd.to_datetime(end_date_period2))
+period3_mask = df_loads['datetime'] >= pd.to_datetime(start_date_period3)
 
+# Count points in each period for the legend
+p1_count = period1_mask.sum()
+p2_count = period2_mask.sum()
+p3_count = period3_mask.sum()
+
+# Plot each period with a different color and shape
+plt.scatter(df_loads.loc[period1_mask, 'Wsp_44m'], df_loads.loc[period1_mask, 'MyA1_mean'], 
+            color='crimson', alpha=0.6, s=20, marker='o',
+            label=f'Period 1: Jan-Aug 2017 ({p1_count} points)')
+plt.scatter(df_loads.loc[period2_mask, 'Wsp_44m'], df_loads.loc[period2_mask, 'MyA1_mean'], 
+            color='royalblue', alpha=0.6, s=20, marker='s',
+            label=f'Period 2: Aug 2017-Jun 2018 ({p2_count} points)')
+plt.scatter(df_loads.loc[period3_mask, 'Wsp_44m'], df_loads.loc[period3_mask, 'MyA1_mean'], 
+            color='forestgreen', alpha=0.6, s=20, marker='^',
+            label=f'Period 3: Jun-Jul 2018 ({p3_count} points)')
+
+# Add labels, title, grid, and legend
 plt.xlabel('Wind Speed (m/s)', fontsize=12)
 plt.ylabel(f'MyA1 Mean ({column_units.get("MyA1_mean", "kNm")})', fontsize=12)
-plt.title('MyA1 Calibration Groups', fontsize=14)
+plt.title('MyA1 Mean vs Wind Speed by Time Period', fontsize=14)
 plt.grid(True, alpha=0.3)
-plt.legend(fontsize=10)
-plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Calibration_Groups.png'), dpi=300)
+
+# Create a more visible legend
+legend = plt.legend(fontsize=12, 
+                   markerscale=2,        # Make legend markers larger
+                   frameon=True,         # Add a frame
+                   fancybox=True,        # Round the corners
+                   framealpha=0.9,       # Slight transparency in frame
+                   edgecolor='black',    # Black edge around legend
+                   loc='best')           # Let matplotlib choose best location
+
+# Add horizontal reference lines at average MyA1 values for each period 
+# to highlight the vertical shift between periods
+for mask, color in [(period1_mask, 'crimson'), (period2_mask, 'royalblue'), (period3_mask, 'forestgreen')]:
+    if mask.sum() > 0:
+        avg = df_loads.loc[mask, 'MyA1_mean'].mean()
+        plt.axhline(y=avg, color=color, linestyle='--', alpha=0.7, linewidth=1.5)
+        plt.text(plt.xlim()[1]*0.95, avg, f'Avg: {avg:.1f} kNm', 
+                 color=color, ha='right', va='center', fontweight='bold')
+
+plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Mean_vs_WindSpeed_ThreePeriods.png'), dpi=300)
 plt.close()
 
+# Print statistics for each period
+print("\nStatistics for each manually identified period:")
+for period_num, mask in [(1, period1_mask), (2, period2_mask), (3, period3_mask)]:
+    period_data = df_loads[mask]
+    if not period_data.empty:
+        print(f"\nPeriod {period_num}:")
+        print(f"  Date range: {period_data['datetime'].min().strftime('%Y-%m-%d')} to {period_data['datetime'].max().strftime('%Y-%m-%d')}")
+        print(f"  Number of points: {len(period_data)}")
+        print(f"  Average MyA1 mean: {period_data['MyA1_mean'].mean():.2f} kNm")
+        print(f"  MyA1 mean std dev: {period_data['MyA1_mean'].std():.2f} kNm")
 
-# Calculate corrected calibration offsets
-print("\n--- Calculating Corrected Calibration Values ---")
 
-# Assume the most recent group has the correct calibration
-# Or choose a reference group (e.g., the one with the most data points)
-reference_group_id = df_calibration.groupby('cluster').size().idxmax()
-reference_mean = df_calibration[df_calibration['cluster'] == reference_group_id]['MyA1_mean'].mean()
+# Calculate calibration adjustments after the statistics section
+print("\n--- Calculating Calibration Adjustments ---")
 
+# Original calibration parameters
 original_gain = 763.4
 original_offset = 312.8
 
-print(f"Using Group {reference_group_id+1} as reference calibration")
 print(f"Original calibration: Gain = {original_gain}, Offset = {original_offset}")
+
+# Use the most recent period (Period 3) as reference
+reference_period = 3
+reference_value = df_loads.loc[period3_mask, 'MyA1_mean'].mean()
+
+print(f"Using Period {reference_period} as reference (mean = {reference_value:.2f} kNm)")
 print("\nSuggested calibration values:")
 
-for cluster_id in sorted(df_calibration['cluster'].unique()):
-    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
-    cluster_mean = cluster_data['MyA1_mean'].mean()
-    
-    # Calculate offset difference
-    offset_diff = cluster_mean - reference_mean
-    corrected_offset = original_offset - offset_diff
-    
-    min_date = cluster_data['datetime'].min().strftime('%Y-%m-%d')
-    max_date = cluster_data['datetime'].max().strftime('%Y-%m-%d')
-    
-    print(f"Group {cluster_id+1} ({min_date} to {max_date}):")
-    print(f"  Gain = {original_gain} (unchanged)")
-    print(f"  Offset = {corrected_offset:.1f}")
-    
-    # Calculate and show a few sample conversions
-    print(f"  Example conversions at 10 m/s:")
-    original_value = cluster_data[cluster_data['Wsp_44m'].between(9.8, 10.2)]['MyA1_mean'].mean()
-    corrected_value = reference_mean # This would be the expected value after correction
-    print(f"    Original reading: {original_value:.2f} kNm")
-    print(f"    Corrected reading: {corrected_value:.2f} kNm\n")
-
-# Create a visualization of the correction
-plt.figure(figsize=(14, 8))
-
-# Plot original data with cluster colors
-for cluster_id in sorted(df_calibration['cluster'].unique()):
-    cluster_data = df_calibration[df_calibration['cluster'] == cluster_id]
-    plt.scatter(cluster_data['Wsp_44m'], cluster_data['MyA1_mean'], 
-                alpha=0.4, s=15, color=colors[cluster_id % len(colors)],
-                label=f'Original Group {cluster_id+1}')
-    
-    # Calculate and plot corrected values
-    offset_diff = cluster_data['MyA1_mean'].mean() - reference_mean
-    cluster_data['corrected_MyA1'] = cluster_data['MyA1_mean'] - offset_diff
-    plt.scatter(cluster_data['Wsp_44m'], cluster_data['corrected_MyA1'], 
-                alpha=0.4, s=15, marker='x', color=colors[cluster_id % len(colors)],
-                label=f'Corrected Group {cluster_id+1}')
-
-plt.xlabel('Wind Speed (m/s)', fontsize=12)
-plt.ylabel(f'MyA1 Mean ({column_units.get("MyA1_mean", "kNm")})', fontsize=12)
-plt.title('MyA1 Original vs Corrected Values', fontsize=14)
-plt.grid(True, alpha=0.3)
-plt.legend(fontsize=10)
-plt.savefig(os.path.join(q5_pictures_dir, 'MyA1_Calibration_Correction.png'), dpi=300)
-plt.close()
-# Look into possible reasons for multiple MyA1 levels
-
-# Plot MyA1 over time (or color by time in stat vs wsp) to observe evolution
-
-# Same calibration used for all: Gain=763.4, Offset=312.8
-# -> Identify subsets where calibration may have changed
-# -> Figure out if Gain or Offset changed, suggest new values
+# Calculate offsets for each period
+for period_num, mask in [(1, period1_mask), (2, period2_mask), (3, period3_mask)]:
+    period_data = df_loads[mask]
+    if not period_data.empty:
+        period_mean = period_data['MyA1_mean'].mean()
+        
+        # Calculate the offset correction needed
+        # Since we want to shift earlier periods up to match the reference period:
+        offset_adjustment = reference_value - period_mean
+        corrected_offset = original_offset - offset_adjustment
+        
+        print(f"\nPeriod {period_num}:")
+        print(f"  Date range: {period_data['datetime'].min().strftime('%Y-%m-%d')} to {period_data['datetime'].max().strftime('%Y-%m-%d')}")
+        print(f"  Current average: {period_mean:.2f} kNm")
+        print(f"  Adjustment needed: {offset_adjustment:.2f} kNm")
+        print(f"  Gain = {original_gain} (unchanged)")
+        print(f"  Corrected Offset = {corrected_offset:.1f}")
+        
+        # Example conversion
+        example_ws = 10.0  # Show example for 10 m/s wind speed
+        example_data = period_data[(period_data['Wsp_44m'] >= 9.5) & (period_data['Wsp_44m'] <= 10.5)]
+        if not example_data.empty:
+            example_value = example_data['MyA1_mean'].mean()
+            corrected_example = example_value + offset_adjustment
+            print(f"  Example at ~{example_ws} m/s:")
+            print(f"    Before: {example_value:.2f} kNm")
+            print(f"    After: {corrected_example:.2f} kNm")
 
 # --- Cross-checks ---
 
 # Use electrical power (PO) to verify main shaft torque (MzR)
 
-# --- Tower Bottom Moments ---
+
+# --- Tower Bottom Moments ---# --- Cross-checks: Verify MzR signal using electrical power (PO) ---
+print("\n--- Verifying Main Shaft Torque (MzR) using Electrical Power (PO) ---")
+
+# Create a scatter plot comparing mechanical power vs electrical power
+plt.figure(figsize=(12, 8))
+
+# Calculate mechanical power from shaft torque and rotor speed
+# Convert ROT from rpm to rad/s by multiplying by 2π/60
+df_loads['mech_power_kW'] = df_loads['MzR_mean'] * df_loads['ROT'] * (2 * np.pi / 60) 
+
+# Create the scatter plot
+plt.scatter(df_loads['mech_power_kW'], df_loads['po'], alpha=0.5, s=15, c=df_loads['Wsp_44m'], cmap='viridis')
+plt.xlabel('Mechanical Power from MzR (kW)', fontsize=12)
+plt.ylabel('Electrical Power Output (kW)', fontsize=12)
+plt.title('Verification of MzR: Mechanical Power vs Electrical Power', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.colorbar(label='Wind Speed (m/s)')
+
+# Add a 1:1 reference line (ideal 100% efficiency)
+max_val = max(df_loads['mech_power_kW'].max(), df_loads['po'].max())
+plt.plot([0, max_val], [0, max_val], 'r--', alpha=0.7, label='1:1 Line (100% Efficiency)')
+
+# Add a trend line using linear regression
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+X = df_loads['mech_power_kW'].values.reshape(-1, 1)
+y = df_loads['po'].values
+
+# Filter out NaN values
+mask = ~np.isnan(X.flatten()) & ~np.isnan(y)
+X_clean = X[mask]
+y_clean = y[mask]
+
+if len(X_clean) > 0:
+    model = LinearRegression(fit_intercept=True)
+    model.fit(X_clean, y_clean)
+    
+    # Get slope (efficiency) and intercept
+    efficiency = model.coef_[0]
+    intercept = model.intercept_
+    
+    # Plot the regression line
+    x_range = np.linspace(0, max_val, 100)
+    plt.plot(x_range, model.predict(x_range.reshape(-1, 1)), 'g-', 
+             label=f'Trend Line (Efficiency = {efficiency:.3f})')
+    
+    plt.text(max_val*0.1, max_val*0.8, 
+             f'Efficiency Factor: {efficiency:.3f}\nIntercept: {intercept:.2f} kW', 
+             fontsize=12, bbox=dict(facecolor='white', alpha=0.7))
+
+plt.legend()
+plt.tight_layout()
+plt.savefig(os.path.join(q5_pictures_dir, 'MzR_Verification_Power.png'), dpi=300)
+plt.close()
+
+# Print the results
+if 'efficiency' in locals():
+    print(f"Calculated drivetrain efficiency: {efficiency:.3f}")
+    print(f"Intercept: {intercept:.2f} kW")
+    print(f"This means approximately {efficiency*100:.1f}% of mechanical power is converted to electrical power")
+    
+    if 0.80 <= efficiency <= 0.98:
+        print("This efficiency value is within the expected range for wind turbines (80-98%)")
+        print("The MzR signal appears to be properly calibrated.")
+    else:
+        print(f"Warning: The calculated efficiency of {efficiency:.3f} is outside the expected range (0.80-0.98)")
+        print("This suggests a potential calibration issue with the MzR signal.")
 
 # MxTB and MyTB: large scatter
 # -> Analyze vs wind direction
 # -> Try transforming into new signals with less scatter
 
+
+# --- Tower Bottom Moments vs Wind Direction Analysis ---
+print("\n--- Analyzing Tower Bottom Moments vs Wind Direction ---")
+
+# Temporarily expand the wind direction filter for this analysis
+df_expanded = df_loads_full_sector.copy()
+
+# Calculate relative wind direction (wind direction relative to nacelle orientation)
+df_expanded['relative_wind_dir'] = (df_expanded['Wdir_41m'] - df_expanded['yaw']) % 360
+
+# Create scatter plots of moments vs wind direction
+plt.figure(figsize=(18, 10))
+
+# MxTB vs Wind Direction
+plt.subplot(2, 2, 1)
+plt.scatter(df_expanded['Wdir_41m'], df_expanded['MxTB_mean'], 
+            alpha=0.4, s=10, c=df_expanded['Wsp_44m'], cmap='viridis')
+plt.xlabel('Absolute Wind Direction (deg)', fontsize=12)
+plt.ylabel('MxTB Mean (kNm)', fontsize=12)
+plt.title('MxTB vs Absolute Wind Direction', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.colorbar(label='Wind Speed (m/s)')
+
+# MyTB vs Wind Direction
+plt.subplot(2, 2, 2)
+plt.scatter(df_expanded['Wdir_41m'], df_expanded['MyTB_mean'], 
+            alpha=0.4, s=10, c=df_expanded['Wsp_44m'], cmap='viridis')
+plt.xlabel('Absolute Wind Direction (deg)', fontsize=12)
+plt.ylabel('MyTB Mean (kNm)', fontsize=12)
+plt.title('MyTB vs Absolute Wind Direction', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.colorbar(label='Wind Speed (m/s)')
+
+# MxTB vs Relative Wind Direction
+plt.subplot(2, 2, 3)
+plt.scatter(df_expanded['relative_wind_dir'], df_expanded['MxTB_mean'], 
+            alpha=0.4, s=10, c=df_expanded['Wsp_44m'], cmap='viridis')
+plt.xlabel('Relative Wind Direction (deg)', fontsize=12)
+plt.ylabel('MxTB Mean (kNm)', fontsize=12)
+plt.title('MxTB vs Relative Wind Direction', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.colorbar(label='Wind Speed (m/s)')
+
+# MyTB vs Relative Wind Direction
+plt.subplot(2, 2, 4)
+plt.scatter(df_expanded['relative_wind_dir'], df_expanded['MyTB_mean'], 
+            alpha=0.4, s=10, c=df_expanded['Wsp_44m'], cmap='viridis')
+plt.xlabel('Relative Wind Direction (deg)', fontsize=12)
+plt.ylabel('MyTB Mean (kNm)', fontsize=12)
+plt.title('MyTB vs Relative Wind Direction', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.colorbar(label='Wind Speed (m/s)')
+
+plt.tight_layout()
+plt.savefig(os.path.join(q5_pictures_dir, 'Tower_Bottom_vs_WindDirection.png'), dpi=300)
+plt.close()
+
+
+# --- Improved Tower Bottom Moment Transformation ---
+print("\n--- Improved Tower Bottom Moment Transformation ---")
+
+# For tower base moments, we should transform based on absolute wind direction
+# rather than relative wind direction (since the tower doesn't yaw with the nacelle)
+df_expanded['wind_dir_abs_rad'] = np.deg2rad(df_expanded['Wdir_41m'])
+
+# Apply coordinate transformation using absolute wind direction
+df_expanded['M_fore_aft'] = (df_expanded['MxTB_mean'] * np.cos(df_expanded['wind_dir_abs_rad']) + 
+                            df_expanded['MyTB_mean'] * np.sin(df_expanded['wind_dir_abs_rad']))
+
+df_expanded['M_side_side'] = (-df_expanded['MxTB_mean'] * np.sin(df_expanded['wind_dir_abs_rad']) + 
+                             df_expanded['MyTB_mean'] * np.cos(df_expanded['wind_dir_abs_rad']))
+
+# Create a improved comparison plot
+plt.figure(figsize=(18, 12))
+
+# Original MxTB vs Wind Speed (top left)
+plt.subplot(2, 2, 1)
+plt.scatter(df_expanded['Wsp_44m'], df_expanded['MxTB_mean'], 
+            alpha=0.4, s=10, c=df_expanded['Wdir_41m'], cmap='hsv')
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel('MxTB Mean (kNm)', fontsize=12)
+plt.title('Original MxTB vs Wind Speed', fontsize=14)
+plt.grid(True, alpha=0.3)
+cbar = plt.colorbar()
+cbar.set_label('Absolute Wind Direction (deg)')
+
+# Original MyTB vs Wind Speed (top right)
+plt.subplot(2, 2, 2)
+plt.scatter(df_expanded['Wsp_44m'], df_expanded['MyTB_mean'], 
+            alpha=0.4, s=10, c=df_expanded['Wdir_41m'], cmap='hsv')
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel('MyTB Mean (kNm)', fontsize=12)
+plt.title('Original MyTB vs Wind Speed', fontsize=14)
+plt.grid(True, alpha=0.3)
+cbar = plt.colorbar()
+cbar.set_label('Absolute Wind Direction (deg)')
+
+# New Fore-Aft Moment vs Wind Speed (bottom left)
+plt.subplot(2, 2, 3)
+plt.scatter(df_expanded['Wsp_44m'], df_expanded['M_fore_aft'], 
+            alpha=0.4, s=10, c=df_expanded['Wdir_41m'], cmap='hsv')
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel('Fore-Aft Moment (kNm)', fontsize=12)
+plt.title('Transformed Fore-Aft Moment vs Wind Speed', fontsize=14)
+plt.grid(True, alpha=0.3)
+cbar = plt.colorbar()
+cbar.set_label('Absolute Wind Direction (deg)')
+
+# New Side-Side Moment vs Wind Speed (bottom right)
+plt.subplot(2, 2, 4)
+plt.scatter(df_expanded['Wsp_44m'], df_expanded['M_side_side'], 
+            alpha=0.4, s=10, c=df_expanded['Wdir_41m'], cmap='hsv')
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel('Side-Side Moment (kNm)', fontsize=12)
+plt.title('Transformed Side-Side Moment vs Wind Speed', fontsize=14)
+plt.grid(True, alpha=0.3)
+cbar = plt.colorbar()
+cbar.set_label('Absolute Wind Direction (deg)')
+
+plt.tight_layout()
+plt.savefig(os.path.join(q5_pictures_dir, 'Tower_Bottom_Transformation_Improved.png'), dpi=300)
+plt.close()
+
+# --- Quantifying Scatter Reduction in Tower Bottom Moments ---
+print("\n--- Analyzing Scatter Reduction in Tower Bottom Moments ---")
+
+# Create wind speed bins for analysis
+ws_bins = np.arange(4, 19, 1)  # 4-19 m/s in 1 m/s bins
+bin_results = []
+
+# Calculate binned statistics for both original and transformed signals
+for bin_start in ws_bins:
+    bin_end = bin_start + 1
+    bin_mask = (df_expanded['Wsp_44m'] >= bin_start) & (df_expanded['Wsp_44m'] < bin_end)
+    bin_data = df_expanded[bin_mask]
+    
+    if len(bin_data) > 5:  # Only calculate if we have enough data points
+        result = {
+            'wind_speed_bin': f"{bin_start}-{bin_end}",
+            'count': len(bin_data),
+            'MxTB_mean': bin_data['MxTB_mean'].mean(),
+            'MxTB_std': bin_data['MxTB_mean'].std(),
+            'MyTB_mean': bin_data['MyTB_mean'].mean(),
+            'MyTB_std': bin_data['MyTB_mean'].std(),
+            'M_fore_aft_mean': bin_data['M_fore_aft'].mean(),
+            'M_fore_aft_std': bin_data['M_fore_aft'].std(),
+            'M_side_side_mean': bin_data['M_side_side'].mean(),
+            'M_side_side_std': bin_data['M_side_side'].std()
+        }
+        bin_results.append(result)
+
+# Convert to DataFrame
+df_scatter = pd.DataFrame(bin_results)
+
+# Calculate average reduction in scatter
+if not df_scatter.empty:
+    avg_MxTB_std = df_scatter['MxTB_std'].mean()
+    avg_MyTB_std = df_scatter['MyTB_std'].mean()
+    avg_M_fore_aft_std = df_scatter['M_fore_aft_std'].mean()
+    avg_M_side_side_std = df_scatter['M_side_side_std'].mean()
+    
+    # Calculate percentage reduction
+    reduction_x = (1 - avg_M_fore_aft_std / avg_MxTB_std) * 100
+    reduction_y = (1 - avg_M_side_side_std / avg_MyTB_std) * 100
+    
+    print(f"Average standard deviation in MxTB: {avg_MxTB_std:.2f} kNm")
+    print(f"Average standard deviation in M_fore_aft: {avg_M_fore_aft_std:.2f} kNm")
+    print(f"Scatter reduction: {reduction_x:.1f}%")
+    
+    print(f"Average standard deviation in MyTB: {avg_MyTB_std:.2f} kNm")
+    print(f"Average standard deviation in M_side_side: {avg_M_side_side_std:.2f} kNm")
+    print(f"Scatter reduction: {reduction_y:.1f}%")
+
+# Create plot comparing standard deviations
+plt.figure(figsize=(14, 8))
+
+# Plot standard deviations by wind speed
+bins_x = [float(b.split('-')[0]) for b in df_scatter['wind_speed_bin']]
+
+# Original moments
+plt.plot(bins_x, df_scatter['MxTB_std'], 'ro-', label='MxTB Std Dev', linewidth=2)
+plt.plot(bins_x, df_scatter['MyTB_std'], 'bo-', label='MyTB Std Dev', linewidth=2)
+
+# Transformed moments
+plt.plot(bins_x, df_scatter['M_fore_aft_std'], 'rd--', label='M_fore_aft Std Dev', linewidth=2)
+plt.plot(bins_x, df_scatter['M_side_side_std'], 'bd--', label='M_side_side Std Dev', linewidth=2)
+
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel('Standard Deviation (kNm)', fontsize=12)
+plt.title('Scatter Comparison: Original vs Transformed Tower Bottom Moments', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.legend(fontsize=12)
+plt.tight_layout()
+plt.savefig(os.path.join(q5_pictures_dir, 'Tower_Bottom_Scatter_Comparison.png'), dpi=300)
+plt.close()
+
+# Create a distribution plot to visualize the shape of the distributions
+plt.figure(figsize=(16, 8))
+
+# Plot histograms for original and transformed signals
+plt.subplot(2, 2, 1)
+plt.hist(df_expanded['MxTB_mean'].dropna(), bins=30, alpha=0.7, color='red')
+plt.title('MxTB Distribution', fontsize=12)
+plt.xlabel('Moment (kNm)', fontsize=10)
+plt.grid(True, alpha=0.3)
+
+plt.subplot(2, 2, 2)
+plt.hist(df_expanded['MyTB_mean'].dropna(), bins=30, alpha=0.7, color='blue')
+plt.title('MyTB Distribution', fontsize=12)
+plt.xlabel('Moment (kNm)', fontsize=10)
+plt.grid(True, alpha=0.3)
+
+plt.subplot(2, 2, 3)
+plt.hist(df_expanded['M_fore_aft'].dropna(), bins=30, alpha=0.7, color='red')
+plt.title('M_fore_aft Distribution', fontsize=12)
+plt.xlabel('Moment (kNm)', fontsize=10)
+plt.grid(True, alpha=0.3)
+
+plt.subplot(2, 2, 4)
+plt.hist(df_expanded['M_side_side'].dropna(), bins=30, alpha=0.7, color='blue')
+plt.title('M_side_side Distribution', fontsize=12)
+plt.xlabel('Moment (kNm)', fontsize=10)
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig(os.path.join(q5_pictures_dir, 'Tower_Bottom_Distributions.png'), dpi=300)
+plt.close()
+
+
 # --- Rotor Tilt Moment ---
+# --- Rotor Tilt Moment Analysis ---
+# print("\n--- Analyzing Rotor Tilt Moment (Mtilt) ---")
+
+# # Create correlation analysis for Mtilt with other signals
+# correlation_signals = ['Wsp_44m', 'MyTB_mean', 'M_fore_aft', 'MxR_mean', 'MyR_mean']
+# mtilt_correlations = {}
+
+# for signal in correlation_signals:
+#     if signal in df_loads.columns:
+#         # Calculate correlation between Mtilt and the signal
+#         correlation = df_loads['Mtilt_mean'].corr(df_loads[signal])
+#         mtilt_correlations[signal] = correlation
+
+# # Print correlations
+# print("Mtilt correlations with other signals:")
+# for signal, corr in mtilt_correlations.items():
+#     print(f"  {signal}: {corr:.3f}")
+
+# # Low wind speed behavior (zero loading)
+# low_ws_mask = df_loads['Wsp_44m'] <= 5.0
+# low_ws_mtilt = df_loads.loc[low_ws_mask, 'Mtilt_mean']
+# zero_loading = low_ws_mtilt.mean()
+
+# print(f"\nZero loading (average at wind speeds <= 5 m/s): {zero_loading:.2f} kNm")
+
+# # Plot Mtilt vs wind speed
+# plt.figure(figsize=(12, 8))
+# plt.scatter(df_loads['Wsp_44m'], df_loads['Mtilt_mean'], alpha=0.5, s=15)
+# plt.axhline(y=zero_loading, color='red', linestyle='--', label=f'Zero loading: {zero_loading:.2f} kNm')
+# plt.xlabel('Wind Speed (m/s)', fontsize=12)
+# plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+# plt.title('Rotor Tilt Moment vs Wind Speed', fontsize=14)
+# plt.grid(True, alpha=0.3)
+# plt.legend()
+# plt.savefig(os.path.join(q5_pictures_dir, 'Mtilt_vs_WindSpeed.png'), dpi=300)
+# plt.close()
+
+# # Enhanced Rotor Tilt Moment Analysis
+# print("\n--- Comprehensive Rotor Tilt Moment (Mtilt) Analysis ---")
+
+# # Create a directory for these specific plots
+# mtilt_dir = os.path.join(q5_pictures_dir, 'Mtilt_Analysis')
+# os.makedirs(mtilt_dir, exist_ok=True)
+
+# # 1. CORRELATION ANALYSIS - Create correlation matrix with key signals
+# correlation_signals = [
+#     'Wsp_44m',       # Wind speed
+#     'MyTB_mean',     # Tower bottom fore-aft moment
+#     'M_fore_aft',    # Transformed tower fore-aft moment
+#     'MxR_mean',      # Rotor-aligned moment
+#     'MyR_mean',      # Rotor-aligned moment
+#     'MyA1_mean',     # Blade 1 root flapwise moment (proxy for edgewise bending moments)
+#     'MzR_mean'       # Main shaft torque (related to aerodynamic thrust)
+# ]
+
+# # Create a filtered dataframe with just the needed columns 
+# # (removing rows with NaN in any of these columns)
+# df_mtilt = df_expanded[['Mtilt_mean'] + correlation_signals].dropna()
+
+# # Calculate and display correlation matrix
+# correlation_matrix = df_mtilt.corr()
+# print("\nMtilt correlation with other signals:")
+# for signal in correlation_signals:
+#     if signal in correlation_matrix.index:
+#         print(f"  {signal}: {correlation_matrix.loc['Mtilt_mean', signal]:.3f}")
+
+# # 2. ZERO LOADING BEHAVIOR ANALYSIS
+# # Get more precise zero loading estimate by averaging very low wind speeds
+# very_low_ws_mask = df_loads['Wsp_44m'] <= 4.5  # Focus on cut-in region
+# low_ws_mtilt = df_loads.loc[very_low_ws_mask, 'Mtilt_mean']
+# zero_loading = low_ws_mtilt.mean()
+
+# print(f"\nZero loading (average at wind speeds <= 4.5 m/s): {zero_loading:.2f} kNm")
+# print(f"Standard deviation at low wind speeds: {low_ws_mtilt.std():.2f} kNm")
+
+# # 3. DETAILED VISUALIZATIONS
+
+# # 3.1. Mtilt vs Wind Speed with Zero Loading Highlighted
+# plt.figure(figsize=(12, 8))
+# scatter = plt.scatter(df_loads['Wsp_44m'], df_loads['Mtilt_mean'], 
+#                      alpha=0.5, s=15, c=df_loads['datetime'].astype(int), cmap='viridis')
+# plt.axhline(y=zero_loading, color='red', linestyle='--', 
+#             label=f'Zero loading: {zero_loading:.2f} kNm')
+
+# # Add a shaded region representing the standard deviation at low wind speeds
+# plt.axhspan(zero_loading - low_ws_mtilt.std(), 
+#             zero_loading + low_ws_mtilt.std(), 
+#             color='red', alpha=0.2, 
+#             label=f'Standard deviation: ±{low_ws_mtilt.std():.2f} kNm')
+
+# # Add binned average line
+# bin_centers = np.arange(4, 19, 1)
+# bin_means = []
+# for center in bin_centers:
+#     mask = (df_loads['Wsp_44m'] >= center-0.5) & (df_loads['Wsp_44m'] < center+0.5)
+#     if mask.sum() > 5:  # Only include if we have enough data
+#         bin_means.append(df_loads.loc[mask, 'Mtilt_mean'].mean())
+#     else:
+#         bin_means.append(np.nan)
+        
+# plt.plot(bin_centers, bin_means, 'ko-', linewidth=2, label='Binned Average')
+
+# plt.xlabel('Wind Speed (m/s)', fontsize=12)
+# plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+# plt.title('Rotor Tilt Moment vs Wind Speed with Zero Loading', fontsize=14)
+# plt.grid(True, alpha=0.3)
+# plt.legend(fontsize=10)
+# plt.colorbar(scatter, label='Time (chronological)')
+# plt.savefig(os.path.join(mtilt_dir, 'Mtilt_vs_WindSpeed_Enhanced.png'), dpi=300)
+# plt.close()
+
+# # 3.2. Correlation Plots - Create a 2x2 grid of key correlations
+# plt.figure(figsize=(16, 14))
+
+# # Plot 1: Mtilt vs Fore-Aft Moment (representing tower interaction)
+# plt.subplot(2, 2, 1)
+
+# # Create a mask for positive fore-aft moments only
+# positive_moments_mask = df_expanded['M_fore_aft'] > 0
+
+# # Filter the data using the mask
+# plt.scatter(df_expanded.loc[positive_moments_mask, 'M_fore_aft'], 
+#            df_expanded.loc[positive_moments_mask, 'Mtilt_mean'], 
+#            alpha=0.5, s=15, 
+#            c=df_expanded.loc[positive_moments_mask, 'Wsp_44m'], 
+#            cmap='viridis')
+
+# plt.xlabel('Tower Fore-Aft Moment (kNm) - Positive Only', fontsize=12)
+# plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+# plt.title('Rotor Tilt Moment vs Tower Fore-Aft Moment (Positive Only)', fontsize=14)
+# plt.grid(True, alpha=0.3)
+# plt.colorbar(label='Wind Speed (m/s)')
+
+# # Recalculate correlation coefficient using only positive values
+# filtered_fore_aft = df_expanded.loc[positive_moments_mask, 'M_fore_aft'].dropna()
+# filtered_mtilt = df_expanded.loc[positive_moments_mask, 'Mtilt_mean'].dropna()
+
+# # Ensure we have matching indices for correlation calculation
+# common_idx = filtered_fore_aft.index.intersection(filtered_mtilt.index)
+# if len(common_idx) > 1:  # Need at least 2 points for correlation
+#     corr = np.corrcoef(
+#         filtered_fore_aft.loc[common_idx], 
+#         filtered_mtilt.loc[common_idx]
+#     )[0,1]
+#     plt.annotate(f"Correlation: {corr:.3f}", xy=(0.05, 0.95), xycoords='axes fraction', 
+#                 bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.8))
+
+# # Plot 2: Mtilt vs edgewise bending moment (MyA1 as proxy for edgewise bending moments)
+# plt.subplot(2, 2, 2)
+# plt.scatter(df_loads['MyA1_mean'], df_loads['Mtilt_mean'], 
+#            alpha=0.5, s=15, c=df_loads['Wsp_44m'], cmap='viridis')
+# plt.xlabel('Blade 1 Root Moment (kNm)', fontsize=12)
+# plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+# plt.title('Rotor Tilt Moment vs edgewise bending moment', fontsize=14)
+# plt.grid(True, alpha=0.3)
+# plt.colorbar(label='Wind Speed (m/s)')
+
+# # Calculate and display correlation coefficient
+# corr = np.corrcoef(df_loads['MyA1_mean'].dropna(), 
+#                   df_loads.loc[df_loads['MyA1_mean'].dropna().index, 'Mtilt_mean'])[0,1]
+# plt.annotate(f"Correlation: {corr:.3f}", xy=(0.05, 0.95), xycoords='axes fraction', 
+#             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.8))
+
+# # Plot 3: Mtilt vs MxR (Rotor moment - related to thrust/aerodynamic effects)
+# plt.subplot(2, 2, 3)
+# plt.scatter(df_loads['MxR_mean'], df_loads['Mtilt_mean'], 
+#            alpha=0.5, s=15, c=df_loads['Wsp_44m'], cmap='viridis')
+# plt.xlabel('Rotor Mx Moment (kNm)', fontsize=12)
+# plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+# plt.title('Rotor Tilt Moment vs Rotor Mx Moment', fontsize=14)
+# plt.grid(True, alpha=0.3)
+# plt.colorbar(label='Wind Speed (m/s)')
+
+# # Calculate and display correlation coefficient
+# corr = np.corrcoef(df_loads['MxR_mean'].dropna(), 
+#                   df_loads.loc[df_loads['MxR_mean'].dropna().index, 'Mtilt_mean'])[0,1]
+# plt.annotate(f"Correlation: {corr:.3f}", xy=(0.05, 0.95), xycoords='axes fraction', 
+#             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.8))
+
+# # Plot 4: Mtilt vs Wind Speed with Power Output as color
+# plt.subplot(2, 2, 4)
+# scatter = plt.scatter(df_loads['Wsp_44m'], df_loads['Mtilt_mean'], 
+#                      alpha=0.6, s=15, c=df_loads['po'], cmap='plasma')
+# plt.axhline(y=zero_loading, color='red', linestyle='--', 
+#            label=f'Zero loading: {zero_loading:.2f} kNm')
+# plt.xlabel('Wind Speed (m/s)', fontsize=12)
+# plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+# plt.title('Rotor Tilt Moment vs Wind Speed (colored by Power)', fontsize=14)
+# plt.grid(True, alpha=0.3)
+# plt.legend(fontsize=10)
+# plt.colorbar(scatter, label='Power Output (kW)')
+
+# plt.tight_layout()
+# plt.savefig(os.path.join(mtilt_dir, 'Mtilt_Correlation_Matrix.png'), dpi=300)
+# plt.close()
+
+# # 3.3. Zero Loading Exploration - Very Low Wind Speed Range
+# plt.figure(figsize=(14, 7))
+# zero_ws_mask = df_loads['Wsp_44m'] <= 6.0  # Include slightly higher wind speeds for visualization
+
+# # Create a scatter plot with enhanced visual appearance
+# plt.scatter(df_loads.loc[zero_ws_mask, 'Wsp_44m'], 
+#             df_loads.loc[zero_ws_mask, 'Mtilt_mean'], 
+#             alpha=0.6, s=20, c=df_loads.loc[zero_ws_mask, 'datetime'].astype(int), 
+#             cmap='viridis', edgecolor='w', linewidth=0.5)
+
+# # Add a horizontal line at the zero loading level
+# plt.axhline(y=zero_loading, color='red', linestyle='--', label=f'Zero loading: {zero_loading:.2f} kNm')
+
+# # Add a trend line for the zero loading region
+# from scipy.stats import linregress
+# x = df_loads.loc[zero_ws_mask, 'Wsp_44m']
+# y = df_loads.loc[zero_ws_mask, 'Mtilt_mean']
+# slope, intercept, r_value, p_value, std_err = linregress(x, y)
+# x_trend = np.linspace(x.min(), x.max(), 100)
+# y_trend = slope * x_trend + intercept
+# plt.plot(x_trend, y_trend, 'k-', linewidth=2, 
+#          label=f'Trend: {slope:.2f}x + {intercept:.2f} (r²={r_value**2:.3f})')
+
+# plt.xlabel('Wind Speed (m/s)', fontsize=12)
+# plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+# plt.title('Zero Loading Analysis: Rotor Tilt Moment at Low Wind Speeds', fontsize=14)
+# plt.grid(True, alpha=0.3)
+# plt.legend(fontsize=10)
+# plt.colorbar(label='Time (chronological)')
+
+# # Annotate additional information about zero loading
+# plt.text(0.02, 0.95, 
+#          f"Zero Loading Statistics:\n" +
+#          f"Mean: {zero_loading:.2f} kNm\n" +
+#          f"Std Dev: {low_ws_mtilt.std():.2f} kNm\n" +
+#          f"Physical Cause: Blade weight moment\n" +
+#          f"Expected: Non-zero due to mass imbalance",
+#          transform=plt.gca().transAxes,
+#          bbox=dict(boxstyle="round,pad=0.5", fc="white", ec="gray", alpha=0.8),
+#          fontsize=10, verticalalignment='top')
+
+# plt.tight_layout()
+# plt.savefig(os.path.join(mtilt_dir, 'Mtilt_Zero_Loading_Analysis.png'), dpi=300)
+# plt.close()
+
+# print(f"Saved Mtilt analysis plots to {mtilt_dir}")
+
+
+#%%
+print('my own analysis of mtilt')
+
+# create mask for wind speeds above cut in, lets say above 6 m/s
+tilt_mask = df_expanded['Wsp_44m'] > 6.0
+tilt_mask_zero_load = df_expanded['Wsp_44m'] < 6.0
+
+# Create a subdirectory for mtilt analysis plots
+mtilt_analysis_dir = os.path.join(q5_pictures_dir, 'mtilt_analysis_plots')
+os.makedirs(mtilt_analysis_dir, exist_ok=True)
+
+
+
+# plot rotor tilt vs wind speed above cut in
+plt.figure(figsize=(12, 8))
+plt.scatter(df_expanded.loc[tilt_mask, 'Wsp_44m'], 
+            df_expanded.loc[tilt_mask, 'Mtilt_mean'], 
+            alpha=0.5, s=15, c=df_expanded.loc[tilt_mask, 'datetime'].astype(int), cmap='viridis')
+#add trendline
+# Add trendline using linear regression
+from scipy.stats import linregress
+
+# Get x and y data (filtered by the tilt_mask)
+x = df_expanded.loc[tilt_mask, 'Wsp_44m']
+y = df_expanded.loc[tilt_mask, 'Mtilt_mean']
+
+# Filter out NaN values for regression
+mask = ~np.isnan(x) & ~np.isnan(y)
+if mask.sum() > 1:  # Need at least 2 points for regression
+    # Calculate regression
+    slope, intercept, r_value, p_value, std_err = linregress(x[mask], y[mask])
+    
+    # Create trendline data
+    x_trend = np.linspace(x.min(), x.max(), 100)
+    y_trend = slope * x_trend + intercept
+    
+    # Plot trendline
+    plt.plot(x_trend, y_trend, 'r-', linewidth=2, 
+             label=f'Trend: {slope:.2f}x + {intercept:.2f} (r²={r_value**2:.3f})')
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+plt.title('Rotor Tilt Moment vs Wind Speed (above cut-in)', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.colorbar(label='Time (chronological)')
+plt.legend()
+
+# Save using the correctly joined path
+plt.savefig(os.path.join(mtilt_analysis_dir, 'Mtilt_vs_WindSpeed_above_cutin.png'), dpi=300)
+plt.close()
+
+
+# plot zero loading behavior at low wind speeds
+plt.figure(figsize=(12, 8))
+plt.scatter(df_expanded.loc[~tilt_mask, 'Wsp_44m'], 
+            df_expanded.loc[~tilt_mask, 'Mtilt_mean'], 
+            alpha=0.5, s=15, c=df_expanded.loc[~tilt_mask, 'datetime'].astype(int), cmap='viridis')
+# Get x and y data (filtered by the tilt_mask)
+x = df_expanded.loc[~tilt_mask, 'Wsp_44m']
+y = df_expanded.loc[~tilt_mask, 'Mtilt_mean']
+
+# Filter out NaN values for regression
+mask = ~np.isnan(x) & ~np.isnan(y)
+if mask.sum() > 1:  # Need at least 2 points for regression
+    # Calculate regression
+    slope, intercept, r_value, p_value, std_err = linregress(x[mask], y[mask])
+    
+    # Create trendline data
+    x_trend = np.linspace(x.min(), x.max(), 100)
+    y_trend = slope * x_trend + intercept
+    
+    # Plot trendline
+    plt.plot(x_trend, y_trend, 'r-', linewidth=2, 
+             label=f'Trend: {slope:.2f}x + {intercept:.2f} (r²={r_value**2:.3f})')
+plt.xlabel('Wind Speed (m/s)', fontsize=12)
+plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+plt.title('Rotor Tilt Moment vs Wind Speed (Zero loading at low wind speeds)', fontsize=14)
+plt.grid(True, alpha=0.3)
+plt.colorbar(label='Time (chronological)')
+plt.legend()
+
+# Save using the correctly joined path
+plt.savefig(os.path.join(mtilt_analysis_dir, 'Mtilt_vs_WindSpeed_zero_load.png'), dpi=300)
+plt.close()
+
+#plot mtilt against all load channel means with a for loop
+load_channels = ['MxTB_mean', 'MyTB_mean', 'MxR_mean', 
+                 'MyR_mean', 'MzR_mean', 'MyA1_mean', 
+                 'MxA1_mean', 'MyA1_mean', 'Myaw_mean',
+                 ]
+for channel in load_channels:
+    plt.figure(figsize=(12, 8))
+    plt.scatter(df_expanded[channel], df_expanded['Mtilt_mean'], 
+                alpha=0.5, s=15, c=df_expanded['Wsp_44m'], cmap='viridis')
+    
+    # Add trendline using linear regression
+    x = df_expanded[channel]
+    y = df_expanded['Mtilt_mean']
+
+    # Filter out NaN values for regression
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    if mask.sum() > 1:  # Need at least 2 points for regression
+        # Calculate regression
+        slope, intercept, r_value, p_value, std_err = linregress(x[mask], y[mask])
+        
+        # Create trendline data
+        x_trend = np.linspace(x.min(), x.max(), 100)
+        y_trend = slope * x_trend + intercept
+        
+        # Plot trendline
+        plt.plot(x_trend, y_trend, 'r-', linewidth=2, 
+                 label=f'Trend: {slope:.2f}x + {intercept:.2f} (r²={r_value**2:.3f})')
+    
+    plt.xlabel(f'{channel} Mean (kNm)', fontsize=12)
+    plt.ylabel('Mtilt Mean (kNm)', fontsize=12)
+    plt.title(f'Rotor Tilt Moment vs {channel} Mean', fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.colorbar(label='Wind Speed (m/s)')
+    plt.legend()
+
+    # Save using the correctly joined path
+    plt.savefig(os.path.join(mtilt_analysis_dir, f'Mtilt_vs_{channel}.png'), dpi=300)
+    plt.close()
+
+
+
 
 # Check how Mtilt correlates with other loads
 # -> Look at zero-loading behavior at low wind speeds
@@ -914,3 +1581,28 @@ plt.close()
 # --- Tower Top Torsion ---
 
 # Check what MzTT correlates with — yaw or tilt moment?
+# plot MzTT vs yaw and MzTT vs Mtilt
+fn.plot_scatter('Tower Top Torsion vs Yaw (not direction filtered)',
+                df_loads_full_sector['MzTT_mean'],
+                df_loads_full_sector['Myaw_mean'],
+                'Myaw Mean (kNm)', 'MzTT Mean (kNm)', 'Yaw (deg)',
+                False)
+fn.plot_scatter('Tower Top Torsion vs Mtilt (not direction filtered)',
+                df_loads_full_sector['MzTT_mean'],
+                df_loads_full_sector['Mtilt_mean'],
+                'Mtilt Mean (kNm)', 'MzTT Mean (kNm)', 'Mtilt Mean (kNm)',
+                False)
+
+# check with df_loads
+
+fn.plot_scatter('Tower Top Torsion vs Yaw (direction filtered)',
+                df_loads['MzTT_mean'],
+                df_loads['Myaw_mean'],
+                'Myaw Mean (kNm)', 'MzTT Mean (kNm)', 'Yaw (deg)',
+                False)
+
+fn.plot_scatter('Tower Top Torsion vs Mtilt (direction filtered)',
+                df_loads['MzTT_mean'],
+                df_loads['Mtilt_mean'],
+                'Mtilt Mean (kNm)', 'MzTT Mean (kNm)', 'Mtilt Mean (kNm)',
+                False)
